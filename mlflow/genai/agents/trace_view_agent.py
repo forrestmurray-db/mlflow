@@ -156,3 +156,52 @@ def create_view_from_summary(
     if views:
         return views[-1]
     return None
+
+
+_CONVERSATIONAL_SYSTEM_PROMPT = """\
+You are an expert trace analyst for MLflow traces of AI agent trajectories.
+
+You help users understand, explore, and create filtered views of their traces.
+You have tools to explore spans and create/update trace views.
+
+When the user asks you to analyze a trace, use list_spans and get_span to explore
+the trace structure, then explain what you find.
+
+When asked to create or modify views, use create_trace_view and update_trace_view.
+Each view contains ranges that highlight specific phases or milestones.
+
+You can also summarize traces — identify key milestones and phases of execution.
+"""
+
+
+def create_conversational_agent(trace_id: str, model: str = "openai:/gpt-4o"):
+    """Create a conversational trace analysis agent.
+
+    Returns a callable that accepts a messages list and returns the agent's response.
+    """
+    from mlflow.genai.judges.adapters.litellm_adapter import _invoke_litellm_and_handle_tools
+    from mlflow.metrics.genai.model_utils import _parse_model_uri
+    from mlflow.tracking import MlflowClient
+    from mlflow.types.llm import ChatMessage
+
+    trace = MlflowClient().get_trace(trace_id)
+    model_provider, model_name = _parse_model_uri(model)
+
+    def invoke(messages: list[dict]) -> str:
+        chat_messages = [
+            ChatMessage(role="system", content=_CONVERSATIONAL_SYSTEM_PROMPT),
+        ]
+        for msg in messages:
+            chat_messages.append(ChatMessage(role=msg["role"], content=msg["content"]))
+
+        result = _invoke_litellm_and_handle_tools(
+            provider=model_provider,
+            model_name=model_name,
+            messages=chat_messages,
+            trace=trace,
+            num_retries=10,
+            skills=_get_skills(),
+        )
+        return result.response
+
+    return invoke
