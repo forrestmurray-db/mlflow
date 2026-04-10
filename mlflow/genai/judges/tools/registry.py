@@ -173,3 +173,9 @@ from mlflow.genai.judges.tools.read_skill_file import ReadSkillFileTool
 
 _judge_tool_registry.register(ReadSkillTool())
 _judge_tool_registry.register(ReadSkillFileTool())
+
+from mlflow.genai.judges.tools.create_trace_view import CreateTraceViewTool
+from mlflow.genai.judges.tools.update_trace_view import UpdateTraceViewTool
+
+_judge_tool_registry.register(CreateTraceViewTool())
+_judge_tool_registry.register(UpdateTraceViewTool())
