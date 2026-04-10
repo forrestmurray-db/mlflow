@@ -26,6 +26,8 @@ import { FormattedMessage } from '@databricks/i18n';
 import { useAssistant } from './AssistantContext';
 import { useAssistantPageContext } from './AssistantPageContext';
 import { AssistantContextTags } from './AssistantContextTags';
+import { AssistantModeMenu } from './AssistantModeMenu';
+import { AssistantModeBadge } from './AssistantModeBadge';
 import type { ChatMessage, ToolUseInfo } from './types';
 import { AssistantSetupWizard } from './setup';
 import { GenAIMarkdownRenderer } from '../shared/web-shared/genai-markdown-renderer';
@@ -260,7 +262,7 @@ const PromptSuggestions = ({ onSelect }: { onSelect: (prompt: string) => void })
  */
 const ChatPanelContent = () => {
   const { theme } = useDesignSystemTheme();
-  const { messages, isStreaming, error, activeTools, sendMessage, regenerateLastMessage, cancelSession } =
+  const { messages, isStreaming, error, activeTools, sendMessage, regenerateLastMessage, cancelSession, mode, setMode } =
     useAssistant();
 
   const [inputValue, setInputValue] = useState('');
@@ -364,9 +366,10 @@ const ChatPanelContent = () => {
           }}
         >
           <div css={{ display: 'flex', alignItems: 'flex-end' }}>
+            <AssistantModeMenu currentMode={mode} onModeChange={setMode} />
             <textarea
               ref={textareaRef}
-              placeholder="Ask a question..."
+              placeholder={mode === 'trace_analysis' ? 'Ask about this trace...' : 'Ask a question...'}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -402,6 +405,7 @@ const ChatPanelContent = () => {
               aria-label="Send message"
             />
           </div>
+          <AssistantModeBadge mode={mode} onClear={() => setMode('assistant')} />
           <AssistantContextTags />
         </div>
       </div>
