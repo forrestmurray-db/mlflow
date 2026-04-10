@@ -5,7 +5,9 @@ This module provides endpoints for integrating AI assistants with MLflow UI,
 enabling AI-powered helper through a chat interface.
 """
 
+import asyncio
 import ipaddress
+import json
 import uuid
 from pathlib import Path
 from typing import Any, AsyncGenerator, Literal
@@ -142,6 +144,48 @@ async def send_message(request: MessageRequest) -> MessageResponse:
     return MessageResponse(
         session_id=session_id,
         stream_url=f"/ajax-api/3.0/mlflow/assistant/stream/{session_id}",
+    )
+
+
+class TraceAnalysisMessageRequest(BaseModel):
+    messages: list[dict[str, Any]]
+    context: dict[str, Any] = Field(default_factory=dict)
+    stream: bool = True
+    model: str = "openai:/gpt-4o"
+
+
+@assistant_router.post("/trace-analysis/message")
+async def trace_analysis_message(request: TraceAnalysisMessageRequest) -> StreamingResponse:
+    trace_id = request.context.get("trace_id")
+    if not trace_id:
+        raise HTTPException(status_code=400, detail="context.trace_id is required")
+
+    loop = asyncio.get_event_loop()
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        from mlflow.genai.agents.trace_view_agent import create_conversational_agent
+
+        try:
+            agent_invoke = await loop.run_in_executor(
+                None, lambda: create_conversational_agent(trace_id, request.model)
+            )
+            messages = request.messages
+            response_text = await loop.run_in_executor(None, lambda: agent_invoke(messages))
+            payload = json.dumps({"content": response_text, "role": "assistant"})
+            yield f"data: {payload}\n\n"
+        except Exception as e:
+            error_payload = json.dumps({"error": str(e)})
+            yield f"data: {error_payload}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
