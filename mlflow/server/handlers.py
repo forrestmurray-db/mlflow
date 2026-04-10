@@ -310,6 +310,7 @@ from mlflow.utils.mlflow_tags import (
     MLFLOW_ISSUE_DETECTION_JOB_ID,
     MLFLOW_RUN_TYPE,
     MLFLOW_RUN_TYPE_ISSUE_DETECTION,
+    MLFLOW_RUN_TYPE_TRACE_VIEW_CREATION,
 )
 from mlflow.utils.promptlab_utils import _create_promptlab_run_impl
 from mlflow.utils.proto_json_utils import message_to_json, parse_dict
@@ -4429,6 +4430,71 @@ def _invoke_issue_detection_handler():
 
 @catch_mlflow_exception
 @_disable_if_artifacts_only
+def _invoke_trace_view_creation_handler():
+    from mlflow.genai.agents.job import invoke_trace_view_creation_job
+    from mlflow.server.jobs import submit_job
+
+    _validate_content_type(request, ["application/json"])
+
+    request_json = _get_validated_flask_request_json(
+        schema={
+            "experiment_id": [_assert_required, _assert_string],
+            "trace_ids": [_assert_required, _assert_array],
+            "provider": [_assert_required, _assert_string],
+            "model": [_assert_string],
+            "secret_id": [_assert_string],
+            "endpoint_name": [_assert_string],
+        }
+    )
+
+    experiment_id = request_json.get("experiment_id")
+    trace_ids = request_json.get("trace_ids", [])
+    provider = request_json.get("provider")
+    model = request_json.get("model")
+    secret_id = request_json.get("secret_id")
+    endpoint_name = request_json.get("endpoint_name")
+
+    if not endpoint_name and not (provider and model):
+        raise MlflowException(
+            "Either 'endpoint_name' or both 'provider' and 'model' must be provided"
+        )
+
+    if secret_id:
+        from mlflow.genai.discovery.job import _fetch_provider_credentials
+
+        store = _get_tracking_store()
+        credentials = _fetch_provider_credentials(store, provider, secret_id)
+    else:
+        credentials = None
+
+    model_name = f"gateway:/{endpoint_name}" if endpoint_name else f"{provider}:/{model}"
+    run = mlflow.start_run(
+        experiment_id=experiment_id,
+        tags={
+            MLFLOW_RUN_TYPE: MLFLOW_RUN_TYPE_TRACE_VIEW_CREATION,
+            "model": model_name,
+            "total_traces": len(trace_ids),
+        },
+    )
+    run_id = run.info.run_id
+
+    job = submit_job(
+        function=invoke_trace_view_creation_job,
+        params={
+            "experiment_id": experiment_id,
+            "trace_ids": trace_ids,
+            "run_id": run_id,
+            "model": model_name,
+        },
+        extra_envs=credentials,
+    )
+    mlflow.end_run(RunStatus.to_string(RunStatus.RUNNING))
+
+    return jsonify({"job_id": job.job_id, "run_id": run_id})
+
+
+@catch_mlflow_exception
+@_disable_if_artifacts_only
 def _get_job(job_id):
     from mlflow.server.jobs import get_job
 
@@ -5931,6 +5997,7 @@ def get_endpoints(get_handler=get_handler):
         + get_gateway_endpoints()
         + get_demo_endpoints()
         + get_issues_detection_endpoints()
+        + get_trace_view_creation_endpoints()
         + get_job_endpoints()
         + get_trace_view_endpoints()
     )
@@ -5972,6 +6039,16 @@ def get_issues_detection_endpoints():
         (
             _get_ajax_path("/mlflow/issues/invoke", version=3),
             _invoke_issue_detection_handler,
+            ["POST"],
+        ),
+    ]
+
+
+def get_trace_view_creation_endpoints():
+    return [
+        (
+            _get_ajax_path("/mlflow/traces/views/invoke", version=3),
+            _invoke_trace_view_creation_handler,
             ["POST"],
         ),
     ]
