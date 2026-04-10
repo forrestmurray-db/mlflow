@@ -208,8 +208,14 @@ def _invoke_litellm(
         kwargs["extra_headers"] = extra_headers
 
     if include_response_format:
-        # LiteLLM supports passing Pydantic models directly for response_format
-        kwargs["response_format"] = response_format or _get_default_judge_response_schema()
+        # LiteLLM supports passing Pydantic models directly for response_format.
+        # When tools are present and no explicit response_format was provided, skip
+        # the default schema — combining tools with a response_format can cause
+        # LiteLLM to inject a synthetic "json_tool_call" that pollutes the tool loop.
+        if response_format is not None:
+            kwargs["response_format"] = response_format
+        elif not tools:
+            kwargs["response_format"] = _get_default_judge_response_schema()
 
     # Apply any additional inference parameters (e.g., temperature, top_p, max_tokens)
     if inference_params:

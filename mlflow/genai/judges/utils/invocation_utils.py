@@ -174,6 +174,7 @@ def get_chat_completions_with_structured_output(
     trace: Trace | None = None,
     num_retries: int = 10,
     inference_params: dict[str, Any] | None = None,
+    skills: SkillSet | None = None,
 ) -> pydantic.BaseModel:
     """
     Get chat completions from an LLM with structured output conforming to a Pydantic schema.
@@ -249,6 +250,7 @@ def get_chat_completions_with_structured_output(
         num_retries=num_retries,
         response_format=output_schema,
         inference_params=inference_params,
+        skills=skills,
     )
 
     cleaned_response = _strip_markdown_code_blocks(output.response)
