@@ -18,6 +18,13 @@ export interface ToolUseInfo {
 }
 
 /**
+ * Assistant chat modes.
+ * 'assistant' = normal Claude Code assistant
+ * 'trace_analysis' = trace view agent via agent server
+ */
+export type AssistantMode = 'assistant' | 'trace_analysis';
+
+/**
  * Known context keys for the assistant.
  * Type-safe registration for common context values.
  */
@@ -70,6 +77,8 @@ export interface AssistantAgentState {
   activeTools: ToolUseInfo[];
   /** Whether setup is complete (provider selected in config) */
   setupComplete: boolean;
+  /** Current chat mode */
+  mode: AssistantMode;
   /** Whether config is being loaded */
   isLoadingConfig: boolean;
   /** Whether the server is running locally (localhost) */
@@ -93,6 +102,8 @@ export interface AssistantAgentActions {
   refreshConfig: () => Promise<void>;
   /** Mark setup as complete (after wizard finishes) */
   completeSetup: () => void;
+  /** Switch the assistant mode */
+  setMode: (mode: AssistantMode) => void;
 }
 
 export type AssistantAgentContextType = AssistantAgentState & AssistantAgentActions;
@@ -105,6 +116,19 @@ export interface MessageRequest {
   message: string;
   experiment_id?: string;
   context?: KnownAssistantContext & Record<string, unknown>;
+}
+
+/**
+ * Request body for trace analysis mode messages.
+ * Sent to the agent server instead of the assistant backend.
+ */
+export interface TraceAnalysisRequest {
+  messages: Array<{ role: string; content: string }>;
+  context: {
+    trace_id?: string;
+    experiment_id?: string;
+  };
+  stream: boolean;
 }
 
 /**
