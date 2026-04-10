@@ -68,6 +68,7 @@ import {
   useRunJudgesOnTracesConfiguration,
 } from '../../../../pages/experiment-scorers/hooks/useRunScorerInTracesViewConfiguration';
 import { IssueDetectionModal } from './IssueDetectionModal';
+import { ViewCreationModal } from './ViewCreationModal';
 import { useIssueDetectionNotification } from './hooks/useIssueDetectionNotification';
 
 const JudgeContextProvider = ({
@@ -166,6 +167,7 @@ const TracesV3LogsImpl = React.memo(
     const enableTraceInsights = shouldEnableTraceInsights();
     const [isGroupedBySession, setIsGroupedBySession] = useState(initialGroupBySession);
     const [isIssueDetectionModalOpen, setIsIssueDetectionModalOpen] = useState(false);
+    const [isViewCreationModalOpen, setIsViewCreationModalOpen] = useState(false);
     const { showIssueDetectionNotification, notificationContextHolder } =
       useIssueDetectionNotification(singleExperimentId);
 
@@ -523,6 +525,7 @@ const TracesV3LogsImpl = React.memo(
               forceGroupBySession={forceGroupBySession}
               onToggleSessionGrouping={onToggleSessionGrouping}
               onDetectIssues={disableActions ? undefined : () => setIsIssueDetectionModalOpen(true)}
+              onCreateViews={disableActions ? undefined : () => setIsViewCreationModalOpen(true)}
             />
             {JudgesStatusBanner}
             {renderMainContent()}
@@ -537,6 +540,13 @@ const TracesV3LogsImpl = React.memo(
               availableTraceIds={traceInfos?.map((trace) => trace.trace_id) ?? []}
               onSubmitSuccess={showIssueDetectionNotification}
               defaultGroupBySession={forceGroupBySession || isGroupedBySession}
+            />
+          )}
+          {!disableActions && isViewCreationModalOpen && singleExperimentId && (
+            <ViewCreationModal
+              onClose={() => setIsViewCreationModalOpen(false)}
+              experimentId={singleExperimentId}
+              traceIds={traceInfos?.map((trace) => trace.trace_id) ?? []}
             />
           )}
           {notificationContextHolder}

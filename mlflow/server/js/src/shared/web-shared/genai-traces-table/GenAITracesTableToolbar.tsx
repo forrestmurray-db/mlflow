@@ -20,6 +20,7 @@ import { GenAiTracesTableSearchInput } from './GenAiTracesTableSearchInput';
 import { EvaluationsOverviewColumnSelectorGrouped } from './components/EvaluationsOverviewColumnSelectorGrouped';
 import { EvaluationsOverviewSortDropdown } from './components/EvaluationsOverviewSortDropdown';
 import { DetectIssuesButton } from './components/DetectIssuesButton';
+import { CreateViewsButton } from './components/CreateViewsButton';
 import type {
   EvaluationsOverviewTableSort,
   TraceActions,
@@ -94,6 +95,9 @@ interface GenAITracesTableToolbarProps {
   // Issue detection
   onDetectIssues?: () => void;
 
+  // View creation
+  onCreateViews?: () => void;
+
   // Additional elements to render in the toolbar
   addons?: React.ReactNode;
 }
@@ -128,6 +132,7 @@ export const GenAITracesTableToolbar: React.FC<React.PropsWithChildren<GenAITrac
       forceGroupBySession,
       onToggleSessionGrouping,
       onDetectIssues,
+      onCreateViews,
       addons,
     } = props;
     const { theme } = useDesignSystemTheme();
@@ -223,6 +228,12 @@ export const GenAITracesTableToolbar: React.FC<React.PropsWithChildren<GenAITrac
           )}
           {shouldEnableIssueDetection() && onDetectIssues && (
             <DetectIssuesButton componentId={detectIssuesButtonComponentId} onClick={onDetectIssues} />
+          )}
+          {onCreateViews && (
+            <CreateViewsButton
+              componentId="mlflow.traces-table.create-views-button"
+              onClick={onCreateViews}
+            />
           )}
           {onRefresh && (
             <Tooltip
