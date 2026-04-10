@@ -5,8 +5,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
-import type { AssistantAgentContextType, ChatMessage, ToolUseInfo } from './types';
+import type { AssistantAgentContextType, AssistantMode, ChatMessage, ToolUseInfo } from './types';
 import { cancelSession as cancelSessionApi, sendMessageStream, getConfig } from './AssistantService';
+import { sendTraceAnalysisStream } from './TraceAnalysisService';
 import { useLocalStorage } from '../shared/web-shared/hooks/useLocalStorage';
 import { useAssistantPageContextActions } from './AssistantPageContext';
 import { useInvalidateTraceViews } from '../shared/web-shared/model-trace-explorer/hooks/useTraceViews';
@@ -25,7 +26,7 @@ const generateMessageId = (): string => {
   return `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
-const TRACE_VIEW_MARKER_REGEX = /\[trace_view_created:\s*(\{.*?\})\]/g;
+const TRACE_VIEW_MARKER_REGEX = /\[trace_view_(?:created|updated):\s*(\{.*?\})\]/g;
 
 function parseTraceViewMarkers(content: string): {
   cleanContent: string;
@@ -65,6 +66,7 @@ export const AssistantProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
   const [activeTools, setActiveTools] = useState<ToolUseInfo[]>([]);
+  const [mode, setMode] = useState<AssistantMode>('assistant');
 
   // Setup state
   const [setupComplete, setSetupComplete] = useState(false);
@@ -205,6 +207,16 @@ export const AssistantProvider = ({ children }: { children: ReactNode }) => {
     streamingMessageRef.current = '';
   }, []);
 
+  const handleSetMode = useCallback(
+    (newMode: AssistantMode) => {
+      if (newMode !== mode) {
+        reset();
+        setMode(newMode);
+      }
+    },
+    [mode, reset],
+  );
+
   const startChat = useCallback(
     async (prompt?: string) => {
       setError(null);
@@ -238,29 +250,51 @@ export const AssistantProvider = ({ children }: { children: ReactNode }) => {
 
       try {
         const pageContext = getPageContext();
-        const result = await sendMessageStream(
-          {
-            message: prompt || '',
-            session_id: sessionId ?? undefined,
-            experiment_id: pageContext['experimentId'] as string | undefined,
-            context: pageContext,
-          },
-          {
-            onMessage: appendToStreamingMessage,
-            onError: handleStreamError,
-            onDone: finalizeStreamingMessage,
-            onStatus: handleStatus,
-            onSessionId: handleSessionId,
-            onToolUse: handleToolUse,
-            onInterrupted: handleInterrupted,
-          },
-        );
+        const callbacks = {
+          onMessage: appendToStreamingMessage,
+          onError: handleStreamError,
+          onDone: finalizeStreamingMessage,
+          onStatus: handleStatus,
+          onSessionId: handleSessionId,
+          onToolUse: handleToolUse,
+          onInterrupted: handleInterrupted,
+        };
+
+        let result;
+        if (mode === 'trace_analysis') {
+          const messageHistory = messages
+            .filter((m) => !m.isStreaming)
+            .map((m) => ({ role: m.role, content: m.content }));
+          if (prompt) {
+            messageHistory.push({ role: 'user', content: prompt });
+          }
+          result = await sendTraceAnalysisStream(
+            messageHistory,
+            {
+              traceId: pageContext['traceId'] as string | undefined,
+              experimentId: pageContext['experimentId'] as string | undefined,
+            },
+            callbacks,
+          );
+        } else {
+          result = await sendMessageStream(
+            {
+              message: prompt || '',
+              session_id: sessionId ?? undefined,
+              experiment_id: pageContext['experimentId'] as string | undefined,
+              context: pageContext,
+            },
+            callbacks,
+          );
+        }
         eventSourceRef.current = result.eventSource;
       } catch (err) {
         handleStreamError(err instanceof Error ? err.message : 'Failed to start chat');
       }
     },
     [
+      mode,
+      messages,
       sessionId,
       getPageContext,
       appendToStreamingMessage,
@@ -309,26 +343,46 @@ export const AssistantProvider = ({ children }: { children: ReactNode }) => {
 
       // Send message and stream response
       const pageContext = getPageContext();
-      const result = await sendMessageStream(
-        {
-          session_id: sessionId,
-          message,
-          experiment_id: pageContext['experimentId'] as string | undefined,
-          context: pageContext,
-        },
-        {
-          onMessage: appendToStreamingMessage,
-          onError: handleStreamError,
-          onDone: finalizeStreamingMessage,
-          onStatus: handleStatus,
-          onSessionId: handleSessionId,
-          onToolUse: handleToolUse,
-          onInterrupted: handleInterrupted,
-        },
-      );
+      const callbacks = {
+        onMessage: appendToStreamingMessage,
+        onError: handleStreamError,
+        onDone: finalizeStreamingMessage,
+        onStatus: handleStatus,
+        onSessionId: handleSessionId,
+        onToolUse: handleToolUse,
+        onInterrupted: handleInterrupted,
+      };
+
+      let result;
+      if (mode === 'trace_analysis') {
+        const messageHistory = messages
+          .filter((m) => !m.isStreaming)
+          .map((m) => ({ role: m.role, content: m.content }));
+        messageHistory.push({ role: 'user', content: message });
+        result = await sendTraceAnalysisStream(
+          messageHistory,
+          {
+            traceId: pageContext['traceId'] as string | undefined,
+            experimentId: pageContext['experimentId'] as string | undefined,
+          },
+          callbacks,
+        );
+      } else {
+        result = await sendMessageStream(
+          {
+            session_id: sessionId,
+            message,
+            experiment_id: pageContext['experimentId'] as string | undefined,
+            context: pageContext,
+          },
+          callbacks,
+        );
+      }
       eventSourceRef.current = result.eventSource;
     },
     [
+      mode,
+      messages,
       sessionId,
       startChat,
       getPageContext,
@@ -459,6 +513,7 @@ export const AssistantProvider = ({ children }: { children: ReactNode }) => {
     setupComplete,
     isLoadingConfig,
     isLocalServer,
+    mode,
     // Actions
     openPanel,
     closePanel,
@@ -468,6 +523,7 @@ export const AssistantProvider = ({ children }: { children: ReactNode }) => {
     cancelSession: handleCancelSession,
     refreshConfig,
     completeSetup,
+    setMode: handleSetMode,
   };
 
   return <AssistantReactContext.Provider value={value}>{children}</AssistantReactContext.Provider>;
@@ -485,6 +541,7 @@ const disabledAssistantContext: AssistantAgentContextType = {
   setupComplete: false,
   isLoadingConfig: false,
   isLocalServer: false,
+  mode: 'assistant' as const,
   openPanel: () => {},
   closePanel: () => {},
   sendMessage: () => {},
@@ -493,6 +550,7 @@ const disabledAssistantContext: AssistantAgentContextType = {
   cancelSession: () => {},
   refreshConfig: () => Promise.resolve(),
   completeSetup: () => {},
+  setMode: () => {},
 };
 
 /**
