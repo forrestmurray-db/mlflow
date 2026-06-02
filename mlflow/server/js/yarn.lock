@@ -5135,6 +5135,7 @@ __metadata:
     buffer: "npm:^6.0.3"
     bytes: "npm:3.0.0"
     classnames: "npm:^2.2.6"
+    clsx: "npm:^1.1.1"
     cookie: "npm:0.3.1"
     cronstrue: "npm:^1.94.0"
     d3-array: "npm:^3.2.4"
