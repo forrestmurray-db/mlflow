@@ -58,3 +58,18 @@ export const shouldUseUnifiedModelTraceComparisonUI = () => {
 export const isEvaluatingTracesInDetailsViewEnabled = () => {
   return true;
 };
+
+/**
+ * Prototype gate for the a2ui-based trace view renderer. Toggle by appending
+ * `?a2ui=1` to the URL. The flag intentionally lives in the URL so it can be
+ * enabled per-tab without rebuilding, until the rearchitecture lands behind a
+ * real config flag.
+ */
+export const shouldEnableA2UITraceViews = () => {
+  if (typeof window === 'undefined') return false;
+  try {
+    return new URLSearchParams(window.location.search).get('a2ui') === '1';
+  } catch {
+    return false;
+  }
+};

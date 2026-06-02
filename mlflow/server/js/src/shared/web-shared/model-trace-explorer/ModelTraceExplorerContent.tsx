@@ -8,6 +8,8 @@ import { useModelTraceExplorerViewState } from './ModelTraceExplorerViewStateCon
 import { TraceViewSelector } from './TraceViewSelector';
 import { ModelTraceExplorerSummaryView } from './summary-view/ModelTraceExplorerSummaryView';
 import { ModelTraceExplorerLinkedPromptsView } from './linked-prompts/ModelTraceExplorerLinkedPromptsView';
+import { shouldEnableA2UITraceViews } from './FeatureUtils';
+import { TraceViewA2UIPrototype } from './a2ui/TraceViewA2UIPrototype';
 
 export const ModelTraceExplorerContent = ({
   modelTraceInfo,
@@ -22,6 +24,7 @@ export const ModelTraceExplorerContent = ({
 }) => {
   const { theme } = useDesignSystemTheme();
   const { activeView, setActiveView, rootNode, activeTraceView, setActiveTraceView } = useModelTraceExplorerViewState();
+  const a2uiEnabled = shouldEnableA2UITraceViews();
 
   const traceId = rootNode?.traceId ?? null;
 
@@ -81,6 +84,14 @@ export const ModelTraceExplorerContent = ({
               description="Label for the linked prompts view tab in the model trace explorer"
             />
           </Tabs.Trigger>
+          {a2uiEnabled && (
+            <Tabs.Trigger value="a2ui">
+              <FormattedMessage
+                defaultMessage="View (a2ui)"
+                description="Prototype tab that renders the trace view using the a2ui catalog"
+              />
+            </Tabs.Trigger>
+          )}
         </Tabs.List>
         <div css={{ paddingRight: theme.spacing.md }}>
           <TraceViewSelector
@@ -128,6 +139,19 @@ export const ModelTraceExplorerContent = ({
       >
         <ModelTraceExplorerLinkedPromptsView modelTraceInfo={modelTraceInfo} />
       </Tabs.Content>
+      {a2uiEnabled && (
+        <Tabs.Content
+          value="a2ui"
+          css={{
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            minHeight: 0,
+          }}
+        >
+          <TraceViewA2UIPrototype />
+        </Tabs.Content>
+      )}
     </Tabs.Root>
   );
 };
