@@ -316,31 +316,10 @@ class Trace(_MlflowObject):
 
         MlflowClient().delete_trace_view(trace_id=self.info.trace_id, view_id=view_id)
 
-    def summarize(self, model="openai:/gpt-4o-mini", view=None):
-        from mlflow.genai.judges.utils.invocation_utils import invoke_judge_model
+    def summarize(self, model="openai:/gpt-4o"):
+        from mlflow.genai.agents.trace_view_agent import summarize_trace
 
-        prompt = "Summarize this trace concisely. Focus on what the agent did, key decisions, and the outcome."
-        if view:
-            from mlflow.tracing.utils.view_utils import resolve_view
-
-            root_span = self.data.spans[0].to_dict() if self.data.spans else None
-            if root_span:
-                results = resolve_view(root_span, view)
-                summary_parts = []
-                for r in results:
-                    summary_parts.append(f"**{r['label']}**: {r['description']}")
-                    if r["extracted_input"]:
-                        summary_parts.append(f"  Input: {r['extracted_input']}")
-                    if r["extracted_output"]:
-                        summary_parts.append(f"  Output: {r['extracted_output']}")
-                prompt += "\n\nView summary:\n" + "\n".join(summary_parts)
-        feedback = invoke_judge_model(
-            model_uri=model,
-            prompt=prompt,
-            assessment_name="trace_summary",
-            trace=self,
-        )
-        return feedback.value
+        return summarize_trace(trace=self, model=model)
 
     def analyze(self, question, model="openai:/gpt-4o-mini", view=None):
         from mlflow.genai.judges.utils.invocation_utils import invoke_judge_model

@@ -2,7 +2,7 @@ import { describe, it, expect } from '@jest/globals';
 
 import { ModelSpanType, type ModelTraceSpanNode } from '../ModelTrace.types';
 import { createListFromObject } from '../ModelTraceExplorer.utils';
-import { spanMatchesFilter, applyJsonPath, applyJsonPathToObject } from './useTraceViewFiltering';
+import { spanMatchesSelector, applyJsonPath, applyJsonPathToObject } from './useTraceViewFiltering';
 
 const makeSpanNode = (overrides: Partial<ModelTraceSpanNode> = {}): ModelTraceSpanNode => ({
   key: 'span-1',
@@ -18,26 +18,32 @@ const makeSpanNode = (overrides: Partial<ModelTraceSpanNode> = {}): ModelTraceSp
   ...overrides,
 });
 
-describe('spanMatchesFilter', () => {
-  it('returns true when filter is null', () => {
-    expect(spanMatchesFilter(makeSpanNode(), null)).toBe(true);
+describe('spanMatchesSelector', () => {
+  it('returns true when selector is null', () => {
+    expect(spanMatchesSelector(makeSpanNode(), null)).toBe(true);
   });
 
-  it('returns true when filter is undefined', () => {
-    expect(spanMatchesFilter(makeSpanNode(), undefined)).toBe(true);
+  it('returns true when selector is undefined', () => {
+    expect(spanMatchesSelector(makeSpanNode(), undefined)).toBe(true);
   });
 
   it('matches by span_name', () => {
     const span = makeSpanNode({ title: 'plan_action' });
-    expect(spanMatchesFilter(span, { span_name: 'plan_action' })).toBe(true);
-    expect(spanMatchesFilter(span, { span_name: 'other_span' })).toBe(false);
+    expect(spanMatchesSelector(span, { span_name: 'plan_action' })).toBe(true);
+    expect(spanMatchesSelector(span, { span_name: 'other_span' })).toBe(false);
+  });
+
+  it('matches by span_id', () => {
+    const span = makeSpanNode({ key: 'abc-123' });
+    expect(spanMatchesSelector(span, { span_id: 'abc-123' })).toBe(true);
+    expect(spanMatchesSelector(span, { span_id: 'xyz-456' })).toBe(false);
   });
 
   it('matches by span_type (case insensitive)', () => {
     const span = makeSpanNode({ type: ModelSpanType.TOOL });
-    expect(spanMatchesFilter(span, { span_type: 'TOOL' })).toBe(true);
-    expect(spanMatchesFilter(span, { span_type: 'tool' })).toBe(true);
-    expect(spanMatchesFilter(span, { span_type: 'LLM' })).toBe(false);
+    expect(spanMatchesSelector(span, { span_type: 'TOOL' })).toBe(true);
+    expect(spanMatchesSelector(span, { span_type: 'tool' })).toBe(true);
+    expect(spanMatchesSelector(span, { span_type: 'LLM' })).toBe(false);
   });
 
   it('falls back to mlflow.spanType attribute when type is null', () => {
@@ -45,31 +51,31 @@ describe('spanMatchesFilter', () => {
       type: undefined,
       attributes: { 'mlflow.spanType': 'RETRIEVER' },
     });
-    expect(spanMatchesFilter(span, { span_type: 'RETRIEVER' })).toBe(true);
-    expect(spanMatchesFilter(span, { span_type: 'TOOL' })).toBe(false);
+    expect(spanMatchesSelector(span, { span_type: 'RETRIEVER' })).toBe(true);
+    expect(spanMatchesSelector(span, { span_type: 'TOOL' })).toBe(false);
   });
 
   it('matches by attribute_key existence', () => {
     const span = makeSpanNode({ attributes: { customAttr: 'val' } });
-    expect(spanMatchesFilter(span, { attribute_key: 'customAttr' })).toBe(true);
-    expect(spanMatchesFilter(span, { attribute_key: 'missing' })).toBe(false);
+    expect(spanMatchesSelector(span, { attribute_key: 'customAttr' })).toBe(true);
+    expect(spanMatchesSelector(span, { attribute_key: 'missing' })).toBe(false);
   });
 
   it('matches by attribute_key + attribute_value', () => {
     const span = makeSpanNode({ attributes: { model: 'gpt-4o' } });
-    expect(spanMatchesFilter(span, { attribute_key: 'model', attribute_value: 'gpt-4o' })).toBe(true);
-    expect(spanMatchesFilter(span, { attribute_key: 'model', attribute_value: 'claude' })).toBe(false);
+    expect(spanMatchesSelector(span, { attribute_key: 'model', attribute_value: 'gpt-4o' })).toBe(true);
+    expect(spanMatchesSelector(span, { attribute_key: 'model', attribute_value: 'claude' })).toBe(false);
   });
 
-  it('requires all filter fields to match (AND logic)', () => {
+  it('requires all selector fields to match (AND logic)', () => {
     const span = makeSpanNode({ title: 'plan_action', type: ModelSpanType.FUNCTION });
-    expect(spanMatchesFilter(span, { span_name: 'plan_action', span_type: 'FUNCTION' })).toBe(true);
-    expect(spanMatchesFilter(span, { span_name: 'plan_action', span_type: 'TOOL' })).toBe(false);
+    expect(spanMatchesSelector(span, { span_name: 'plan_action', span_type: 'FUNCTION' })).toBe(true);
+    expect(spanMatchesSelector(span, { span_name: 'plan_action', span_type: 'TOOL' })).toBe(false);
   });
 
   it('returns false when attributes is an array', () => {
     const span = makeSpanNode({ attributes: ['not', 'a', 'map'] as any });
-    expect(spanMatchesFilter(span, { attribute_key: 'anything' })).toBe(false);
+    expect(spanMatchesSelector(span, { attribute_key: 'anything' })).toBe(false);
   });
 });
 

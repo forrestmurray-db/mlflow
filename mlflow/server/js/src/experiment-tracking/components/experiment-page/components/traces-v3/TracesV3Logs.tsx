@@ -546,7 +546,11 @@ const TracesV3LogsImpl = React.memo(
             <ViewCreationModal
               onClose={() => setIsViewCreationModalOpen(false)}
               experimentId={singleExperimentId}
-              traceIds={traceInfos?.map((trace) => trace.trace_id) ?? []}
+              initialSelectedTraceIds={Object.entries(rowSelection)
+                .filter(([, isSelected]) => isSelected)
+                .map(([traceId]) => traceId)}
+              availableTraceIds={traceInfos?.map((trace) => trace.trace_id) ?? []}
+              defaultGroupBySession={forceGroupBySession || isGroupedBySession}
             />
           )}
           {notificationContextHolder}

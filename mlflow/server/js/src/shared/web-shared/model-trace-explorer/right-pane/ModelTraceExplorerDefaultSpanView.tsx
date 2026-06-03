@@ -14,17 +14,10 @@ import { applyJsonPathToObject, isSpanInRange } from '../hooks/useTraceViewFilte
 import type { PathSelection } from '../hooks/useTraceViews';
 import { getTimelineTreeNodesList } from '../timeline-tree/TimelineTree.utils';
 
-const hasSelection = (
-  selections: PathSelection[] | undefined,
-  spanId: string,
-  path: string,
-): boolean => !!selections?.some((s) => s.span_selector.span_id === spanId && s.path === path);
+const hasSelection = (selections: PathSelection[] | undefined, spanId: string, path: string): boolean =>
+  !!selections?.some((s) => s.span_selector.span_id === spanId && s.path === path);
 
-const toggleSelection = (
-  selections: PathSelection[] | undefined,
-  spanId: string,
-  path: string,
-): PathSelection[] => {
+const toggleSelection = (selections: PathSelection[] | undefined, spanId: string, path: string): PathSelection[] => {
   const current = selections ?? [];
   const idx = current.findIndex((s) => s.span_selector.span_id === spanId && s.path === path);
   if (idx >= 0) {

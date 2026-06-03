@@ -174,14 +174,10 @@ export const useSpanRangeSelection = (
 
         if (newMin > newMax) {
           // Range collapsed entirely — reset to just the clicked span
-          setEditDraft((prev) =>
-            prev ? { ...prev, from_selector: { span_id: spanId }, to_selector: null } : prev,
-          );
+          setEditDraft((prev) => (prev ? { ...prev, from_selector: { span_id: spanId }, to_selector: null } : prev));
         } else if (newMin === newMax) {
           setEditDraft((prev) =>
-            prev
-              ? { ...prev, from_selector: { span_id: String(nodes[newMin].key) }, to_selector: null }
-              : prev,
+            prev ? { ...prev, from_selector: { span_id: String(nodes[newMin].key) }, to_selector: null } : prev,
           );
         } else {
           setEditDraft((prev) =>
@@ -280,12 +276,9 @@ export const useSpanRangeSelection = (
     setEditDraft(null);
   }, []);
 
-  const toggleExpandedSpan = useCallback(
-    (spanId: string) => {
-      setExpandedSpanId((prev) => (prev === spanId ? null : spanId));
-    },
-    [],
-  );
+  const toggleExpandedSpan = useCallback((spanId: string) => {
+    setExpandedSpanId((prev) => (prev === spanId ? null : spanId));
+  }, []);
 
   return {
     getNodeEditState,

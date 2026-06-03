@@ -106,11 +106,7 @@ export const ViewCreationProgress = ({
           <FormattedMessage defaultMessage="View creation progress" description="View creation progress > Title" />
         </Typography.Title>
         {!jobComplete && (
-          <Button
-            componentId="mlflow.traces.view-creation.cancel-button"
-            onClick={handleCancel}
-            loading={isCancelling}
-          >
+          <Button componentId="mlflow.traces.view-creation.cancel-button" onClick={handleCancel} loading={isCancelling}>
             <FormattedMessage defaultMessage="Cancel" description="View creation progress > Cancel button" />
           </Button>
         )}

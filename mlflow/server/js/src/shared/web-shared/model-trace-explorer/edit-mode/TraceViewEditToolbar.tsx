@@ -40,11 +40,7 @@ export const TraceViewEditToolbar = ({
         placeholder="View name"
         css={{ flex: 1 }}
       />
-      <Button
-        componentId="trace-view-edit-toolbar.cancel"
-        type="tertiary"
-        onClick={onCancel}
-      >
+      <Button componentId="trace-view-edit-toolbar.cancel" type="tertiary" onClick={onCancel}>
         Cancel
       </Button>
       <Button

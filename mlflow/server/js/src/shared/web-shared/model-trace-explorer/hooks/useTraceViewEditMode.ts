@@ -46,9 +46,7 @@ export const useTraceViewEditMode = () => {
   const removeRange = useCallback((index: number) => {
     setDraftView((prev) => {
       if (!prev) return prev;
-      const ranges = prev.ranges
-        .filter((_, i) => i !== index)
-        .map((r, i) => ({ ...r, position: i }));
+      const ranges = prev.ranges.filter((_, i) => i !== index).map((r, i) => ({ ...r, position: i }));
       return { ...prev, ranges };
     });
   }, []);

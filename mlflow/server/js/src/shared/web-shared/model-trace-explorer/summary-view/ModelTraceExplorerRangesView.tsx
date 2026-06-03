@@ -245,7 +245,11 @@ const RangeStepCard = ({
         >
           {range.description && <DeeplinkText text={range.description} size="sm" />}
           {inputList.length > 0 && (
-            <CollapsibleIOSection label="Input" expanded={inputExpanded} onToggle={() => setInputExpanded(!inputExpanded)}>
+            <CollapsibleIOSection
+              label="Input"
+              expanded={inputExpanded}
+              onToggle={() => setInputExpanded(!inputExpanded)}
+            >
               {inputList.map(({ key, value }, index) => (
                 <ModelTraceExplorerFieldRenderer key={key || index} title={key} data={value} renderMode="default" />
               ))}

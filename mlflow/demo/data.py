@@ -845,10 +845,110 @@ SESSION_TRACES: list[DemoTrace] = [
 ]
 
 # =============================================================================
+# Multi-Agent Traces (3 traces - complex nested agent patterns)
+# =============================================================================
+
+MULTI_AGENT_TRACES: list[DemoTrace] = [
+    # Pattern 1: LangGraph-style Supervisor with Researcher + Writer workers
+    DemoTrace(
+        query="Research the latest developments in quantum computing and write a blog post summary.",
+        v1_response=(
+            "Quantum computing has made some progress recently. Companies are working on "
+            "building better quantum computers. There are some new algorithms too."
+        ),
+        v2_response=(
+            "## Quantum Computing in 2025: Key Breakthroughs\n\n"
+            "The quantum computing landscape has shifted dramatically this year with three "
+            "major developments:\n\n"
+            "1. **Error Correction Milestone**: Google's Willow chip demonstrated below-threshold "
+            "error correction with 105 qubits, proving that adding more qubits can reduce "
+            "errors — a critical requirement for practical quantum computing.\n\n"
+            "2. **Quantum Advantage in Optimization**: IBM's Heron processor solved a supply "
+            "chain optimization problem 100x faster than classical approaches, marking the "
+            "first commercially relevant quantum advantage.\n\n"
+            "3. **Open-Source Frameworks**: Qiskit 2.0 and Cirq 3.0 now support hybrid "
+            "classical-quantum workflows, lowering the barrier to entry.\n\n"
+            "**Outlook**: Experts predict fault-tolerant quantum computing by 2029, with "
+            "near-term applications in drug discovery, materials science, and cryptography."
+        ),
+        expected_response=(
+            "Key 2025 quantum breakthroughs: Google Willow error correction milestone, "
+            "IBM Heron optimization advantage, and new open-source frameworks. "
+            "Fault-tolerant QC expected by 2029."
+        ),
+        trace_type="multi_agent",
+    ),
+    # Pattern 2: OpenAI Agents SDK-style Triage + Handoff with tool loops
+    DemoTrace(
+        query="I need to cancel my subscription and get a refund for the last charge.",
+        v1_response=(
+            "I can help you cancel. Your subscription will be cancelled and you should "
+            "get a refund in a few days."
+        ),
+        v2_response=(
+            "I've taken care of everything for you:\n\n"
+            "1. **Subscription Cancelled**: Your Premium plan ($29.99/mo) has been cancelled "
+            "effective immediately. You'll retain access until the end of your current billing "
+            "period (April 15, 2025).\n\n"
+            "2. **Refund Processed**: A refund of $29.99 for your March 15 charge has been "
+            "initiated (Ref: REF-2025-8847). Expect it in your account within 3-5 business "
+            "days.\n\n"
+            "3. **Confirmation Email**: A cancellation confirmation has been sent to your "
+            "email on file.\n\n"
+            "Is there anything else I can help you with? If you change your mind, you can "
+            "reactivate anytime within 30 days to keep your account data."
+        ),
+        expected_response=(
+            "Subscription cancelled, retaining access until April 15. Refund of $29.99 "
+            "initiated (REF-2025-8847), arriving in 3-5 business days."
+        ),
+        trace_type="multi_agent",
+    ),
+    # Pattern 3: Hierarchical multi-agent (supervisor of supervisors)
+    DemoTrace(
+        query=(
+            "Analyze our Q1 sales data, compare it against competitor pricing, "
+            "and create an executive summary with recommendations."
+        ),
+        v1_response=(
+            "Based on the data, Q1 sales were okay. Competitors have similar pricing. "
+            "We should probably adjust some things."
+        ),
+        v2_response=(
+            "# Q1 2025 Sales Analysis & Competitive Intelligence\n\n"
+            "## Executive Summary\n"
+            "Q1 revenue of $4.2M represents 12% YoY growth but trails our 18% target. "
+            "The gap is primarily driven by mid-market segment erosion.\n\n"
+            "## Key Findings\n\n"
+            "**Sales Performance**:\n"
+            "- Enterprise: $2.8M (+22% YoY) — strong, driven by 3 large deals\n"
+            "- Mid-market: $1.1M (-8% YoY) — declining, lost 12 accounts\n"
+            "- SMB: $0.3M (+5% YoY) — stable\n\n"
+            "**Competitive Landscape**:\n"
+            "- CompetitorA undercut our mid-market pricing by 20%\n"
+            "- CompetitorB launched a freemium tier capturing SMB leads\n"
+            "- Our enterprise pricing remains competitive (+5% premium justified by features)\n\n"
+            "## Recommendations\n"
+            "1. **Immediate**: Launch mid-market retention campaign with 15% loyalty discount\n"
+            "2. **Q2 Priority**: Introduce starter tier at $49/mo to counter freemium threat\n"
+            "3. **Strategic**: Double down on enterprise with dedicated success team"
+        ),
+        expected_response=(
+            "Q1 revenue $4.2M (+12% YoY) below 18% target. Enterprise strong, mid-market "
+            "declining due to competitor undercutting. Recommend retention campaign and new "
+            "starter tier."
+        ),
+        trace_type="multi_agent",
+    ),
+]
+
+# =============================================================================
 # Combined Trace Data
 # =============================================================================
 
-ALL_DEMO_TRACES: list[DemoTrace] = RAG_TRACES + AGENT_TRACES + PROMPT_TRACES + SESSION_TRACES
+ALL_DEMO_TRACES: list[DemoTrace] = (
+    RAG_TRACES + AGENT_TRACES + PROMPT_TRACES + SESSION_TRACES + MULTI_AGENT_TRACES
+)
 
 # Mapping of queries (lowercased) to expected responses for evaluation
 EXPECTED_ANSWERS: dict[str, str] = {

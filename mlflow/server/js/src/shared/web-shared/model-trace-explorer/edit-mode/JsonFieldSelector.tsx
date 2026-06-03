@@ -57,8 +57,7 @@ const TreeNode = ({ name, value, path, selectedSegments, onSelect, depth }: Tree
   const expandable = isExpandable(value);
 
   const currentPath = [...path, name];
-  const isChecked =
-    selectedSegments !== null && buildJsonPath(currentPath) === buildJsonPath(selectedSegments);
+  const isChecked = selectedSegments !== null && buildJsonPath(currentPath) === buildJsonPath(selectedSegments);
 
   const displayName = typeof name === 'number' ? `[${name}]` : name;
 
@@ -142,17 +141,9 @@ const TreeNode = ({ name, value, path, selectedSegments, onSelect, depth }: Tree
   );
 };
 
-export const JsonFieldSelector = ({
-  data,
-  selectedPath,
-  onPathChange,
-  label,
-}: JsonFieldSelectorProps) => {
+export const JsonFieldSelector = ({ data, selectedPath, onPathChange, label }: JsonFieldSelectorProps) => {
   const { theme } = useDesignSystemTheme();
-  const selectedSegments = useMemo(
-    () => (selectedPath ? parseJsonPath(selectedPath) : null),
-    [selectedPath],
-  );
+  const selectedSegments = useMemo(() => (selectedPath ? parseJsonPath(selectedPath) : null), [selectedPath]);
 
   const handleSelect = useCallback(
     (segments: (string | number)[]) => {

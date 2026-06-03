@@ -30,7 +30,14 @@ export const RangeBadge = ({
     <div
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      onClick={onClick ? (e: React.MouseEvent) => { e.stopPropagation(); onClick(); } : undefined}
+      onClick={
+        onClick
+          ? (e: React.MouseEvent) => {
+              e.stopPropagation();
+              onClick();
+            }
+          : undefined
+      }
       css={{
         display: 'inline-flex',
         alignItems: 'center',

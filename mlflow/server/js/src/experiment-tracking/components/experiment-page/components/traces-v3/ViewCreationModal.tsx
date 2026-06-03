@@ -10,27 +10,36 @@ import {
   ChevronRightIcon,
 } from '@databricks/design-system';
 import { FormattedMessage } from '@databricks/i18n';
+import { SelectTracesModal } from '../../../SelectTracesModal';
 import { useCreateSecret } from '../../../../../gateway/hooks/useCreateSecret';
 import { IssueDetectionModelSelection, type IssueDetectionModelSelectionRef } from './IssueDetectionModelSelection';
 import { useInvokeViewCreation } from './hooks/useInvokeViewCreation';
 
 interface ViewCreationModalProps {
-  traceIds: string[];
   experimentId: string;
   onClose: () => void;
+  initialSelectedTraceIds?: string[];
+  availableTraceIds?: string[];
   onSubmitSuccess?: (runId: string) => void;
+  defaultGroupBySession?: boolean;
 }
 
 export const ViewCreationModal: React.FC<ViewCreationModalProps> = ({
-  traceIds,
   experimentId,
   onClose,
+  initialSelectedTraceIds = [],
+  availableTraceIds = [],
   onSubmitSuccess,
+  defaultGroupBySession = false,
 }) => {
   const { theme } = useDesignSystemTheme();
   const modelSelectionRef = useRef<IssueDetectionModelSelectionRef>(null);
 
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+  const [selectedTraceIds, setSelectedTraceIds] = useState<string[]>(() => {
+    return initialSelectedTraceIds.length > 0 ? initialSelectedTraceIds : availableTraceIds;
+  });
+  const [isSelectTracesModalOpen, setIsSelectTracesModalOpen] = useState(false);
   const [isModelSelectionValid, setIsModelSelectionValid] = useState(false);
 
   const {
@@ -49,6 +58,7 @@ export const ViewCreationModal: React.FC<ViewCreationModalProps> = ({
 
   const resetForm = useCallback(() => {
     setCurrentStep(1);
+    setSelectedTraceIds([]);
     setIsModelSelectionValid(false);
     modelSelectionRef.current?.reset();
   }, []);
@@ -71,7 +81,7 @@ export const ViewCreationModal: React.FC<ViewCreationModalProps> = ({
       invokeViewCreation(
         {
           experimentId,
-          traceIds,
+          traceIds: selectedTraceIds,
           provider,
           model,
           secret_id: secretId,
@@ -170,52 +180,65 @@ export const ViewCreationModal: React.FC<ViewCreationModalProps> = ({
   );
 
   return (
-    <Modal
-      componentId="mlflow.traces.view-creation-modal"
-      title={
-        <div css={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
-          <SparkleIcon color="ai" />
-          <FormattedMessage
-            defaultMessage="Create Trace Views"
-            description="Title of the trace view creation modal"
-          />
-        </div>
-      }
-      visible
-      onCancel={handleClose}
-      footer={currentStep === 1 ? renderStep1Footer() : renderStep2Footer()}
-    >
-      {(createSecretError || viewCreationError) && (
-        <Alert
-          componentId="mlflow.traces.view-creation-modal.error"
-          type="error"
-          message={createSecretError?.message || viewCreationError?.message}
-          closable
-          onClose={() => {
-            resetCreateSecret();
-            resetViewCreation();
-          }}
-          css={{ marginBottom: theme.spacing.md }}
-        />
-      )}
-      {currentStep === 1 ? (
-        <>
-          <Typography.Text color="secondary" css={{ display: 'block', marginBottom: theme.spacing.lg }}>
+    <>
+      <Modal
+        componentId="mlflow.traces.view-creation-modal"
+        title={
+          <div css={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+            <SparkleIcon color="ai" />
             <FormattedMessage
-              defaultMessage="This will analyze {count, plural, one {1 trace} other {# traces}} and create milestone views for each."
-              description="Confirmation message showing how many traces will be analyzed"
-              values={{ count: traceIds.length }}
+              defaultMessage="Create Trace Views"
+              description="Title of the trace view creation modal"
             />
-          </Typography.Text>
-        </>
-      ) : (
-        <IssueDetectionModelSelection
-          ref={modelSelectionRef}
-          selectedTraceIds={traceIds}
-          onSelectTracesClick={() => {}}
-          onValidityChange={handleModelSelectionValidityChange}
+          </div>
+        }
+        visible
+        onCancel={handleClose}
+        footer={currentStep === 1 ? renderStep1Footer() : renderStep2Footer()}
+      >
+        {(createSecretError || viewCreationError) && (
+          <Alert
+            componentId="mlflow.traces.view-creation-modal.error"
+            type="error"
+            message={createSecretError?.message || viewCreationError?.message}
+            closable
+            onClose={() => {
+              resetCreateSecret();
+              resetViewCreation();
+            }}
+            css={{ marginBottom: theme.spacing.md }}
+          />
+        )}
+        {currentStep === 1 ? (
+          <>
+            <Typography.Text color="secondary" css={{ display: 'block', marginBottom: theme.spacing.lg }}>
+              <FormattedMessage
+                defaultMessage="This will analyze {count, plural, one {1 trace} other {# traces}} and create milestone views for each."
+                description="Confirmation message showing how many traces will be analyzed"
+                values={{ count: selectedTraceIds.length }}
+              />
+            </Typography.Text>
+          </>
+        ) : (
+          <IssueDetectionModelSelection
+            ref={modelSelectionRef}
+            selectedTraceIds={selectedTraceIds}
+            onSelectTracesClick={() => setIsSelectTracesModalOpen(true)}
+            onValidityChange={handleModelSelectionValidityChange}
+          />
+        )}
+      </Modal>
+      {isSelectTracesModalOpen && (
+        <SelectTracesModal
+          onClose={() => setIsSelectTracesModalOpen(false)}
+          onSuccess={(traceIds) => {
+            setSelectedTraceIds(traceIds);
+            setIsSelectTracesModalOpen(false);
+          }}
+          initialTraceIdsSelected={selectedTraceIds}
+          defaultGroupBySession={defaultGroupBySession}
         />
       )}
-    </Modal>
+    </>
   );
 };

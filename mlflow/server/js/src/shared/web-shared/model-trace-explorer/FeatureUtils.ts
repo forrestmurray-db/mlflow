@@ -61,14 +61,22 @@ export const isEvaluatingTracesInDetailsViewEnabled = () => {
 
 /**
  * Prototype gate for the a2ui-based trace view renderer. Toggle by appending
- * `?a2ui=1` to the URL. The flag intentionally lives in the URL so it can be
- * enabled per-tab without rebuilding, until the rearchitecture lands behind a
- * real config flag.
+ * `?a2ui=1` to the URL (either as a top-level query string or inside the
+ * hash-router query — both work). The flag intentionally lives in the URL so
+ * it can be enabled per-tab without rebuilding, until the rearchitecture
+ * lands behind a real config flag.
  */
 export const shouldEnableA2UITraceViews = () => {
   if (typeof window === 'undefined') return false;
   try {
-    return new URLSearchParams(window.location.search).get('a2ui') === '1';
+    const fromSearch = new URLSearchParams(window.location.search).get('a2ui');
+    if (fromSearch === '1') return true;
+    const hashQueryIndex = window.location.hash.indexOf('?');
+    if (hashQueryIndex >= 0) {
+      const hashQuery = window.location.hash.slice(hashQueryIndex + 1);
+      if (new URLSearchParams(hashQuery).get('a2ui') === '1') return true;
+    }
+    return false;
   } catch {
     return false;
   }

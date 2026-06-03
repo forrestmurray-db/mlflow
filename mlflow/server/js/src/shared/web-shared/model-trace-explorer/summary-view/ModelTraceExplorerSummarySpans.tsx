@@ -60,10 +60,7 @@ export const ModelTraceExplorerSummarySpans = ({
   const createMutation = useCreateTraceView(traceId);
   const updateMutation = useUpdateTraceView(traceId);
 
-  const flattenedNodes = useMemo(
-    () => getTimelineTreeNodesList(intermediateNodes),
-    [intermediateNodes],
-  );
+  const flattenedNodes = useMemo(() => getTimelineTreeNodesList(intermediateNodes), [intermediateNodes]);
 
   const draftRanges = editMode.draftView?.ranges ?? [];
   const selection = useSpanRangeSelection(
@@ -211,17 +208,22 @@ export const ModelTraceExplorerSummarySpans = ({
         >
           {intermediateNodes.map((node) => {
             const flatIndex = selection.spanKeyToFlatIndex.get(String(node.key));
-            const editState = editMode.isEditMode && editMode.draftView && flatIndex !== undefined
-              ? selection.getNodeEditState(flatIndex)
-              : null;
+            const editState =
+              editMode.isEditMode && editMode.draftView && flatIndex !== undefined
+                ? selection.getNodeEditState(flatIndex)
+                : null;
             return (
               <ModelTraceExplorerSummaryIntermediateNode
                 key={node.key}
                 node={node}
                 renderMode={renderMode}
                 activeTraceView={activeTraceView}
-                isDimmedByView={editState ? editState.isDimmed : (viewMatchedSpanKeys != null && !viewMatchedSpanKeys.has(node.key))}
-                isMatchedByView={editState ? editState.inRange : (viewMatchedSpanKeys != null && viewMatchedSpanKeys.has(node.key))}
+                isDimmedByView={
+                  editState ? editState.isDimmed : viewMatchedSpanKeys != null && !viewMatchedSpanKeys.has(node.key)
+                }
+                isMatchedByView={
+                  editState ? editState.inRange : viewMatchedSpanKeys != null && viewMatchedSpanKeys.has(node.key)
+                }
                 editState={editMode.isEditMode && editMode.draftView ? editState : undefined}
                 editSelection={editMode.isEditMode && editMode.draftView ? selection : undefined}
                 editRanges={editMode.isEditMode && editMode.draftView ? editMode.draftView.ranges : undefined}

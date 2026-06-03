@@ -230,10 +230,7 @@ export const GenAITracesTableToolbar: React.FC<React.PropsWithChildren<GenAITrac
             <DetectIssuesButton componentId={detectIssuesButtonComponentId} onClick={onDetectIssues} />
           )}
           {onCreateViews && (
-            <CreateViewsButton
-              componentId="mlflow.traces-table.create-views-button"
-              onClick={onCreateViews}
-            />
+            <CreateViewsButton componentId="mlflow.traces-table.create-views-button" onClick={onCreateViews} />
           )}
           {onRefresh && (
             <Tooltip

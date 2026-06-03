@@ -143,3 +143,6 @@ gunicorn.conf.py
 !.claude/scripts/
 !.claude/settings.json
 !.claude/statusline.sh
+
+# Local dev utilities (not committed)
+dev/load_trace_jsonl.py

@@ -14,15 +14,29 @@ const MOCK_TRACE_VIEW: TraceView = {
   view_id: 'tv-abc123',
   name: 'Agent Reasoning',
   trace_id: 'tr-001',
-  span_filter: { span_name: 'plan_action' },
-  output_path: '$.reasoning',
+  ranges: [
+    {
+      from_selector: { span_name: 'plan_action' },
+      label: '',
+      description: '',
+      output_path: '$.reasoning',
+      position: 0,
+    },
+  ],
 };
 
 const MOCK_EXPERIMENT_VIEW: TraceView = {
   view_id: 'tv-exp456',
   name: 'Tool Calls',
   experiment_id: '1',
-  span_filter: { span_type: 'TOOL' },
+  ranges: [
+    {
+      from_selector: { span_type: 'TOOL' },
+      label: '',
+      description: '',
+      position: 0,
+    },
+  ],
 };
 
 jest.mock('./hooks/useTraceViews', () => ({

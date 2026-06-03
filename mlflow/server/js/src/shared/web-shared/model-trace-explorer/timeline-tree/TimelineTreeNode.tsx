@@ -72,7 +72,8 @@ export const TimelineTreeNode = ({
   const expanded = expandedKeys.has(node.key);
   const { theme } = useDesignSystemTheme();
   const hasChildren = (node.children ?? []).length > 0;
-  const { setAssessmentsPaneExpanded, selectedViewRangeIdx, setSelectedViewRangeIdx } = useModelTraceExplorerViewState();
+  const { setAssessmentsPaneExpanded, selectedViewRangeIdx, setSelectedViewRangeIdx } =
+    useModelTraceExplorerViewState();
 
   const isActive = selectedKey === node.key;
   const activeChildIndex = getActiveChildIndex(node, String(selectedKey));
@@ -99,30 +100,35 @@ export const TimelineTreeNode = ({
   const activeRangeColor = editRangeColor ?? viewRangeColor;
   const editDragHighlight = editState?.inDrag ? 'rgba(59, 130, 246, 0.08)' : null;
 
-  const backgroundColor = editDragHighlight
-    ?? (activeRangeColor ? activeRangeColor.background : null)
-    ?? (isActive ? theme.colors.actionDefaultBackgroundHover : 'transparent');
+  const backgroundColor =
+    editDragHighlight ??
+    (activeRangeColor ? activeRangeColor.background : null) ??
+    (isActive ? theme.colors.actionDefaultBackgroundHover : 'transparent');
 
   return (
     <>
       {/* Edit mode badge */}
-      {editModeProps && editState?.isFirstInRange && editState.rangeIdx !== undefined && editState.color && (() => {
-        const sel = editModeProps.selection;
-        const isEditingThis = sel.editDraft?.rangeIdx === editState.rangeIdx;
-        return (
-          <div css={{ padding: `${theme.spacing.xs}px ${theme.spacing.sm}px` }}>
-            <RangeBadge
-              label={editModeProps.ranges[editState.rangeIdx].label}
-              color={editState.color}
-              onDelete={isEditingThis ? undefined : () => editModeProps.onRemoveRange(editState.rangeIdx as number)}
-              onClick={isEditingThis ? undefined : () => sel.startEditingRange(editState.rangeIdx as number)}
-              isEditing={isEditingThis}
-              onConfirmEdit={() => sel.confirmEditDraft()}
-              onCancelEdit={() => sel.cancelEditDraft()}
-            />
-          </div>
-        );
-      })()}
+      {editModeProps &&
+        editState?.isFirstInRange &&
+        editState.rangeIdx !== undefined &&
+        editState.color &&
+        (() => {
+          const sel = editModeProps.selection;
+          const isEditingThis = sel.editDraft?.rangeIdx === editState.rangeIdx;
+          return (
+            <div css={{ padding: `${theme.spacing.xs}px ${theme.spacing.sm}px` }}>
+              <RangeBadge
+                label={editModeProps.ranges[editState.rangeIdx].label}
+                color={editState.color}
+                onDelete={isEditingThis ? undefined : () => editModeProps.onRemoveRange(editState.rangeIdx as number)}
+                onClick={isEditingThis ? undefined : () => sel.startEditingRange(editState.rangeIdx as number)}
+                isEditing={isEditingThis}
+                onConfirmEdit={() => sel.confirmEditDraft()}
+                onCancelEdit={() => sel.cancelEditDraft()}
+              />
+            </div>
+          );
+        })()}
       {/* View mode badge */}
       {!editModeProps && viewRangeInfo?.isFirstInRange && viewRangeColor && viewRanges && (
         <div css={{ padding: `${theme.spacing.xs}px ${theme.spacing.sm}px` }}>
@@ -130,9 +136,7 @@ export const TimelineTreeNode = ({
             label={viewRanges[viewRangeInfo.rangeIdx].label}
             color={viewRangeColor}
             onClick={() => {
-              setSelectedViewRangeIdx(
-                selectedViewRangeIdx === viewRangeInfo.rangeIdx ? null : viewRangeInfo.rangeIdx,
-              );
+              setSelectedViewRangeIdx(selectedViewRangeIdx === viewRangeInfo.rangeIdx ? null : viewRangeInfo.rangeIdx);
             }}
             isSelected={selectedViewRangeIdx === viewRangeInfo.rangeIdx}
           />
@@ -161,8 +165,16 @@ export const TimelineTreeNode = ({
           onClick={() => {
             onSelect?.(node);
           }}
-          onPointerDown={editModeProps && flatIndex !== undefined ? () => editModeProps.selection.handlePointerDown(flatIndex) : undefined}
-          onPointerMove={editModeProps && flatIndex !== undefined ? () => editModeProps.selection.handlePointerMove(flatIndex) : undefined}
+          onPointerDown={
+            editModeProps && flatIndex !== undefined
+              ? () => editModeProps.selection.handlePointerDown(flatIndex)
+              : undefined
+          }
+          onPointerMove={
+            editModeProps && flatIndex !== undefined
+              ? () => editModeProps.selection.handlePointerMove(flatIndex)
+              : undefined
+          }
         >
           <div
             css={{

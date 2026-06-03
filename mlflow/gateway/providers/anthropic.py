@@ -197,7 +197,18 @@ class AnthropicAdapter(ProviderAdapter):
         # Transform response_format for Anthropic structured outputs
         # Anthropic uses output_config.format with {"type": "json_schema", "schema": {...}}
         if response_format := payload.pop("response_format", None):
-            if response_format.get("type") == "json_schema" and "json_schema" in response_format:
+            # When tools are present, skip structured output. Anthropic prioritizes
+            # output_config over tool use, causing the model to emit JSON directly
+            # instead of making tool calls.
+            if "tools" in payload:
+                _logger.debug(
+                    "Skipping response_format for Anthropic request with tools. "
+                    "Combining structured output with tool use causes the model to "
+                    "skip tool calls."
+                )
+            elif (
+                response_format.get("type") == "json_schema" and "json_schema" in response_format
+            ):
                 json_schema = response_format["json_schema"]
                 schema = json_schema.get("schema", {})
                 try:

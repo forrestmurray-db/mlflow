@@ -262,8 +262,17 @@ const PromptSuggestions = ({ onSelect }: { onSelect: (prompt: string) => void })
  */
 const ChatPanelContent = () => {
   const { theme } = useDesignSystemTheme();
-  const { messages, isStreaming, error, activeTools, sendMessage, regenerateLastMessage, cancelSession, mode, setMode } =
-    useAssistant();
+  const {
+    messages,
+    isStreaming,
+    error,
+    activeTools,
+    sendMessage,
+    regenerateLastMessage,
+    cancelSession,
+    mode,
+    setMode,
+  } = useAssistant();
 
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);

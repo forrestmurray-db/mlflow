@@ -113,11 +113,7 @@ export function applyJsonPathToObject(data: unknown, jsonPath: string | null | u
  * For single-span ranges (no to_selector), checks if the span matches from_selector.
  * For multi-span ranges, checks if the span appears between from and to in the flat node list.
  */
-export function isSpanInRange(
-  node: ModelTraceSpanNode,
-  flatNodes: ModelTraceSpanNode[],
-  range: SpanRange,
-): boolean {
+export function isSpanInRange(node: ModelTraceSpanNode, flatNodes: ModelTraceSpanNode[], range: SpanRange): boolean {
   if (!range.to_selector) {
     return spanMatchesSelector(node, range.from_selector);
   }

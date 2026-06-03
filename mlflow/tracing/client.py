@@ -849,3 +849,33 @@ class TracingClient:
             The Issue entity.
         """
         return self.store.get_issue(issue_id)
+
+    def create_trace_view(
+        self,
+        trace_id=None,
+        experiment_id=None,
+        name="",
+        ranges=None,
+        created_by=None,
+    ):
+        from mlflow.entities.trace_view import TraceView
+
+        view = TraceView(
+            name=name,
+            trace_id=trace_id,
+            experiment_id=experiment_id,
+            ranges=ranges or [],
+            created_by=created_by,
+        )
+        return self.store.create_trace_view(view)
+
+    def list_trace_views(self, trace_id=None, experiment_id=None):
+        return self.store.list_trace_views(trace_id=trace_id, experiment_id=experiment_id)
+
+    def get_trace_view(self, trace_id, view_id):
+        return self.store.get_trace_view(trace_id, view_id)
+
+    def delete_trace_view(self, trace_id=None, experiment_id=None, view_id=""):
+        return self.store.delete_trace_view(
+            trace_id=trace_id, experiment_id=experiment_id, view_id=view_id
+        )

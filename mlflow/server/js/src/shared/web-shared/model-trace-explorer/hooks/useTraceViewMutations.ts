@@ -14,30 +14,18 @@ interface UpdateTraceViewPayload {
 }
 
 const createTraceView = (traceId: string, payload: CreateTraceViewPayload): Promise<TraceView> =>
-  fetchAPI(
-    getAjaxUrl(`ajax-api/2.0/mlflow/traces/${encodeURIComponent(traceId)}/views`),
-    'POST',
-    payload,
-  );
+  fetchAPI(getAjaxUrl(`ajax-api/2.0/mlflow/traces/${encodeURIComponent(traceId)}/views`), 'POST', payload);
 
-const updateTraceView = (
-  traceId: string,
-  viewId: string,
-  payload: UpdateTraceViewPayload,
-): Promise<TraceView> =>
+const updateTraceView = (traceId: string, viewId: string, payload: UpdateTraceViewPayload): Promise<TraceView> =>
   fetchAPI(
-    getAjaxUrl(
-      `ajax-api/2.0/mlflow/traces/${encodeURIComponent(traceId)}/views/${encodeURIComponent(viewId)}`,
-    ),
+    getAjaxUrl(`ajax-api/2.0/mlflow/traces/${encodeURIComponent(traceId)}/views/${encodeURIComponent(viewId)}`),
     'PATCH',
     payload,
   );
 
 const deleteTraceView = (traceId: string, viewId: string): Promise<void> =>
   fetchAPI(
-    getAjaxUrl(
-      `ajax-api/2.0/mlflow/traces/${encodeURIComponent(traceId)}/views/${encodeURIComponent(viewId)}`,
-    ),
+    getAjaxUrl(`ajax-api/2.0/mlflow/traces/${encodeURIComponent(traceId)}/views/${encodeURIComponent(viewId)}`),
     'DELETE',
   );
 

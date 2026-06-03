@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { Button, Checkbox, ChevronRightIcon, ChevronDownIcon, GearIcon, useDesignSystemTheme, Typography } from '@databricks/design-system';
+import {
+  Button,
+  Checkbox,
+  ChevronRightIcon,
+  ChevronDownIcon,
+  GearIcon,
+  useDesignSystemTheme,
+  Typography,
+} from '@databricks/design-system';
 import { FormattedMessage } from '@databricks/i18n';
 
 import { ModelTraceExplorerSummaryViewExceptionsSection } from './ModelTraceExplorerSummaryViewExceptionsSection';
@@ -98,8 +106,12 @@ export const ModelTraceExplorerSummaryIntermediateNode = ({
           borderLeft: editRangeColor ? `3px solid ${editRangeColor.primary}` : '3px solid transparent',
           borderRadius: theme.borders.borderRadiusSm,
         }}
-        onPointerDown={editSelection && flatIndex !== undefined ? () => editSelection.handlePointerDown(flatIndex) : undefined}
-        onPointerMove={editSelection && flatIndex !== undefined ? () => editSelection.handlePointerMove(flatIndex) : undefined}
+        onPointerDown={
+          editSelection && flatIndex !== undefined ? () => editSelection.handlePointerDown(flatIndex) : undefined
+        }
+        onPointerMove={
+          editSelection && flatIndex !== undefined ? () => editSelection.handlePointerMove(flatIndex) : undefined
+        }
       >
         {editSelection && flatIndex !== undefined && (
           <div css={{ height: ROW_HEIGHT, display: 'flex', alignItems: 'center', marginRight: theme.spacing.xs }}>
@@ -121,186 +133,194 @@ export const ModelTraceExplorerSummaryIntermediateNode = ({
             componentId="shared.model-trace-explorer.toggle-span"
           />
         </div>
-      <div
-        css={{
-          position: 'relative',
-          boxSizing: 'border-box',
-          height: ROW_HEIGHT,
-          borderLeft: `2px solid ${theme.colors.border}`,
-          width: CONNECTOR_WIDTH,
-        }}
-      >
         <div
           css={{
-            position: 'absolute',
-            left: -2,
-            top: 14,
-            height: CONNECTOR_WIDTH,
-            width: CONNECTOR_WIDTH,
+            position: 'relative',
             boxSizing: 'border-box',
-            borderBottomLeftRadius: theme.borders.borderRadiusMd,
-            borderBottom: `2px solid ${theme.colors.border}`,
+            height: ROW_HEIGHT,
             borderLeft: `2px solid ${theme.colors.border}`,
-          }}
-        />
-      </div>
-      <div css={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-        <div css={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography.Text color="secondary" css={{ display: 'inline-flex', alignItems: 'center', height: ROW_HEIGHT }}>
-            <FormattedMessage
-              defaultMessage="{spanName} was called"
-              description="Label for an intermediate node in the trace explorer summary view, indicating that a span/function was called in the course of execution."
-              values={{
-                spanName: <SpanNameDetailViewLink node={node} />,
-              }}
-            />
-          </Typography.Text>
-          <div css={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
-            <span
-              onClick={() => {
-                setSelectedNode(node);
-                setActiveView('detail');
-                setShowTimelineTreeGantt(true);
-              }}
-            >
-              <Typography.Text
-                css={{
-                  '&:hover': {
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                  },
-                }}
-                color="secondary"
-              >
-                {spanTimeFormatter(node.end - node.start)}
-              </Typography.Text>
-            </span>
-            {editState?.inRange && editSelection && (
-              <Button
-                componentId={`summary-intermediate-node.gear-${node.key}`}
-                type="tertiary"
-                size="small"
-                icon={<GearIcon />}
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  editSelection.toggleExpandedSpan(String(node.key));
-                }}
-                aria-label="Configure JSON fields"
-              />
-            )}
-          </div>
-        </div>
-        {expanded && (
-          <div>
-            {hasException && <ModelTraceExplorerSummaryViewExceptionsSection node={node} />}
-            {containsInputs && (
-              <ModelTraceExplorerCollapsibleSection
-                sectionKey="input"
-                title={
-                  <FormattedMessage
-                    defaultMessage="Inputs"
-                    description="Model trace explorer > selected span > inputs header"
-                  />
-                }
-              >
-                <div
-                  css={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: theme.spacing.sm,
-                    paddingLeft: theme.spacing.lg,
-                    marginBottom: theme.spacing.sm,
-                  }}
-                >
-                  {inputList.map(({ key, value }, index) => (
-                    <ModelTraceExplorerFieldRenderer
-                      key={key || index}
-                      title={key}
-                      data={value}
-                      renderMode={renderMode}
-                      chatMessageFormat={chatMessageFormat}
-                    />
-                  ))}
-                </div>
-              </ModelTraceExplorerCollapsibleSection>
-            )}
-            {containsOutputs && (
-              <ModelTraceExplorerCollapsibleSection
-                sectionKey="output"
-                title={
-                  <FormattedMessage
-                    defaultMessage="Outputs"
-                    description="Model trace explorer > selected span > outputs header"
-                  />
-                }
-              >
-                <div
-                  css={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: theme.spacing.sm,
-                    paddingLeft: theme.spacing.lg,
-                    marginBottom: theme.spacing.sm,
-                  }}
-                >
-                  {outputList.map(({ key, value }) => (
-                    <ModelTraceExplorerFieldRenderer
-                      key={key}
-                      title={key}
-                      data={value}
-                      renderMode={renderMode}
-                      chatMessageFormat={chatMessageFormat}
-                      assessments={node.assessments}
-                    />
-                  ))}
-                </div>
-              </ModelTraceExplorerCollapsibleSection>
-            )}
-          </div>
-        )}
-      </div>
-      </div>
-      {editSelection && editSelection.expandedSpanId === String(node.key) && editState?.inRange && editState.rangeIdx !== undefined && editRanges && onUpdateRange && (
-        <div
-          css={{
-            marginLeft: theme.spacing.lg + theme.spacing.md,
-            marginRight: theme.spacing.sm,
-            padding: theme.spacing.sm,
-            backgroundColor: theme.colors.backgroundPrimary,
-            border: `1px solid ${theme.colors.border}`,
-            borderRadius: theme.borders.borderRadiusMd,
-            marginBottom: theme.spacing.xs,
+            width: CONNECTOR_WIDTH,
           }}
         >
           <div
             css={{
-              color: theme.colors.textSecondary,
-              fontSize: theme.typography.fontSizeSm,
-              marginBottom: theme.spacing.sm,
+              position: 'absolute',
+              left: -2,
+              top: 14,
+              height: CONNECTOR_WIDTH,
+              width: CONNECTOR_WIDTH,
+              boxSizing: 'border-box',
+              borderBottomLeftRadius: theme.borders.borderRadiusMd,
+              borderBottom: `2px solid ${theme.colors.border}`,
+              borderLeft: `2px solid ${theme.colors.border}`,
+            }}
+          />
+        </div>
+        <div css={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+          <div css={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography.Text
+              color="secondary"
+              css={{ display: 'inline-flex', alignItems: 'center', height: ROW_HEIGHT }}
+            >
+              <FormattedMessage
+                defaultMessage="{spanName} was called"
+                description="Label for an intermediate node in the trace explorer summary view, indicating that a span/function was called in the course of execution."
+                values={{
+                  spanName: <SpanNameDetailViewLink node={node} />,
+                }}
+              />
+            </Typography.Text>
+            <div css={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
+              <span
+                onClick={() => {
+                  setSelectedNode(node);
+                  setActiveView('detail');
+                  setShowTimelineTreeGantt(true);
+                }}
+              >
+                <Typography.Text
+                  css={{
+                    '&:hover': {
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                    },
+                  }}
+                  color="secondary"
+                >
+                  {spanTimeFormatter(node.end - node.start)}
+                </Typography.Text>
+              </span>
+              {editState?.inRange && editSelection && (
+                <Button
+                  componentId={`summary-intermediate-node.gear-${node.key}`}
+                  type="tertiary"
+                  size="small"
+                  icon={<GearIcon />}
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    editSelection.toggleExpandedSpan(String(node.key));
+                  }}
+                  aria-label="Configure JSON fields"
+                />
+              )}
+            </div>
+          </div>
+          {expanded && (
+            <div>
+              {hasException && <ModelTraceExplorerSummaryViewExceptionsSection node={node} />}
+              {containsInputs && (
+                <ModelTraceExplorerCollapsibleSection
+                  sectionKey="input"
+                  title={
+                    <FormattedMessage
+                      defaultMessage="Inputs"
+                      description="Model trace explorer > selected span > inputs header"
+                    />
+                  }
+                >
+                  <div
+                    css={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: theme.spacing.sm,
+                      paddingLeft: theme.spacing.lg,
+                      marginBottom: theme.spacing.sm,
+                    }}
+                  >
+                    {inputList.map(({ key, value }, index) => (
+                      <ModelTraceExplorerFieldRenderer
+                        key={key || index}
+                        title={key}
+                        data={value}
+                        renderMode={renderMode}
+                        chatMessageFormat={chatMessageFormat}
+                      />
+                    ))}
+                  </div>
+                </ModelTraceExplorerCollapsibleSection>
+              )}
+              {containsOutputs && (
+                <ModelTraceExplorerCollapsibleSection
+                  sectionKey="output"
+                  title={
+                    <FormattedMessage
+                      defaultMessage="Outputs"
+                      description="Model trace explorer > selected span > outputs header"
+                    />
+                  }
+                >
+                  <div
+                    css={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: theme.spacing.sm,
+                      paddingLeft: theme.spacing.lg,
+                      marginBottom: theme.spacing.sm,
+                    }}
+                  >
+                    {outputList.map(({ key, value }) => (
+                      <ModelTraceExplorerFieldRenderer
+                        key={key}
+                        title={key}
+                        data={value}
+                        renderMode={renderMode}
+                        chatMessageFormat={chatMessageFormat}
+                        assessments={node.assessments}
+                      />
+                    ))}
+                  </div>
+                </ModelTraceExplorerCollapsibleSection>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      {editSelection &&
+        editSelection.expandedSpanId === String(node.key) &&
+        editState?.inRange &&
+        editState.rangeIdx !== undefined &&
+        editRanges &&
+        onUpdateRange && (
+          <div
+            css={{
+              marginLeft: theme.spacing.lg + theme.spacing.md,
+              marginRight: theme.spacing.sm,
+              padding: theme.spacing.sm,
+              backgroundColor: theme.colors.backgroundPrimary,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: theme.borders.borderRadiusMd,
+              marginBottom: theme.spacing.xs,
             }}
           >
-            These paths apply to all spans in this range
-          </div>
-          <div css={{ display: 'flex', gap: theme.spacing.md }}>
-            <div css={{ flex: 1 }}>
-              <JsonFieldSelector
-                data={node.inputs}
-                selectedPath={editRanges[editState.rangeIdx].input_path ?? null}
-                onPathChange={(path) => onUpdateRange(editState.rangeIdx as number, { input_path: path })}
-                label="Input Fields"
-              />
+            <div
+              css={{
+                color: theme.colors.textSecondary,
+                fontSize: theme.typography.fontSizeSm,
+                marginBottom: theme.spacing.sm,
+              }}
+            >
+              These paths apply to all spans in this range
             </div>
-            <div css={{ flex: 1 }}>
-              <JsonFieldSelector
-                data={node.outputs}
-                selectedPath={editRanges[editState.rangeIdx].output_path ?? null}
-                onPathChange={(path) => onUpdateRange(editState.rangeIdx as number, { output_path: path })}
-                label="Output Fields"
-              />
+            <div css={{ display: 'flex', gap: theme.spacing.md }}>
+              <div css={{ flex: 1 }}>
+                <JsonFieldSelector
+                  data={node.inputs}
+                  selectedPath={editRanges[editState.rangeIdx].input_path ?? null}
+                  onPathChange={(path) => onUpdateRange(editState.rangeIdx as number, { input_path: path })}
+                  label="Input Fields"
+                />
+              </div>
+              <div css={{ flex: 1 }}>
+                <JsonFieldSelector
+                  data={node.outputs}
+                  selectedPath={editRanges[editState.rangeIdx].output_path ?? null}
+                  onPathChange={(path) => onUpdateRange(editState.rangeIdx as number, { output_path: path })}
+                  label="Output Fields"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 };

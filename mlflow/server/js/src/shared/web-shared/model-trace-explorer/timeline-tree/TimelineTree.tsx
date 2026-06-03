@@ -59,7 +59,10 @@ export const TimelineTree = <NodeType extends ModelTraceSpanNode & { children?: 
     editMode,
   } = useModelTraceExplorerViewState();
 
-  const { matchedKeys: viewMatchedSpanKeys, rangeMap: viewRangeMap } = useTraceViewSpanMatches(rootNodes, activeTraceView);
+  const { matchedKeys: viewMatchedSpanKeys, rangeMap: viewRangeMap } = useTraceViewSpanMatches(
+    rootNodes,
+    activeTraceView,
+  );
 
   const expandedNodesList = useMemo(
     () => getTimelineTreeExpandedNodesList(rootNodes, expandedKeys),
