@@ -1,11 +1,20 @@
-import { Button, ChartLineIcon, Modal, Typography, useDesignSystemTheme } from '@databricks/design-system';
-import { CodeSnippet } from '@mlflow/mlflow/src/shared/web-shared/snippet';
+import { Button, ChartLineIcon, Modal, Spinner, Typography, useDesignSystemTheme } from '@databricks/design-system';
+import { CodeSnippet, SnippetCopyAction } from '@mlflow/mlflow/src/shared/web-shared/snippet';
+import { AggregationType, MetricViewType, TraceMetricKey } from '@databricks/web-shared/model-trace-explorer';
 import { useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { useTraceMetricsQuery } from '../experiment-overview/hooks/useTraceMetricsQuery';
 
-const getCodeSnippet = (experimentId: string) => `import mlflow
-from mlflow.genai import datasets, evaluate, scorers
+const getDatasetCodeSnippet = (experimentId: string, scorersDocLink?: string) => `import mlflow
+import os
+from mlflow.genai import evaluate
+from mlflow.genai.scorers import (
+    Safety,
+    RelevanceToQuery,
+    Guidelines,
+)
 
+os.environ["OPENAI_API_KEY"] = "your-api-key-here"  # Replace with your API key
 mlflow.set_experiment(experiment_id="${experimentId}")
 
 # Step 1: Define evaluation dataset
@@ -24,10 +33,45 @@ def predict(query):
   return query + " an answer"
 
 # Step 3: Run evaluation
+# Select scorers relevant to your use case.${scorersDocLink ? `\n# See all available scorers: ${scorersDocLink}` : ''}
 evaluate(
   data=eval_dataset,
   predict_fn=predict,
-  scorers=scorers.get_all_scorers()
+  scorers=[
+    Safety(),
+    RelevanceToQuery(),
+    Guidelines(name="conciseness", guidelines="Responses must be concise."),
+  ],
+)
+
+# Results will appear back in this UI`;
+
+const getTraceCodeSnippet = (experimentId: string) => `import mlflow
+import os
+from mlflow.genai import evaluate
+from mlflow.genai.scorers import (
+    Safety,
+    RelevanceToQuery,
+    Guidelines,
+)
+
+os.environ["OPENAI_API_KEY"] = "your-api-key-here"  # Replace with your API key
+mlflow.set_experiment(experiment_id="${experimentId}")
+
+# Step 1: Pull traces to evaluate.
+# Adjust max_results, or add a filter_string for time/status, etc.
+# See: https://mlflow.org/docs/latest/genai/eval-monitor/running-evaluation/traces/
+traces = mlflow.search_traces(max_results=20)
+
+# Step 2: Run evaluation. No predict_fn needed — inputs/outputs
+# are extracted from the trace objects automatically.
+evaluate(
+  data=traces,
+  scorers=[
+    Safety(),
+    RelevanceToQuery(),
+    Guidelines(name="conciseness", guidelines="Responses must be concise."),
+  ],
 )
 
 # Results will appear back in this UI`;
@@ -42,10 +86,31 @@ export const RunEvaluationButton = ({ experimentId }: { experimentId: string }) 
       description="Instructions for running the evaluation code in OSS"
     />
   );
-  const evalCodeSnippet = (
-    <CodeSnippet theme={theme.isDarkMode ? 'duotoneDark' : 'light'} language="python">
-      {getCodeSnippet(experimentId)}
-    </CodeSnippet>
+  const { data: traceMetrics, isSuccess: isTraceMetricsLoaded } = useTraceMetricsQuery({
+    experimentIds: [experimentId],
+    viewType: MetricViewType.TRACES,
+    metricName: TraceMetricKey.TRACE_COUNT,
+    aggregations: [{ aggregation_type: AggregationType.COUNT }],
+    enabled: isOpen,
+  });
+  const traceCount = Number(traceMetrics?.data_points?.[0]?.values?.[AggregationType.COUNT] ?? 0);
+  const hasTraces = traceCount > 0;
+  const codeSnippet = hasTraces ? getTraceCodeSnippet(experimentId) : getDatasetCodeSnippet(experimentId);
+  const evalCodeSnippet = isTraceMetricsLoaded ? (
+    <div css={{ position: 'relative' }}>
+      <SnippetCopyAction
+        componentId="mlflow.eval-runs.start-run-modal.copy-snippet"
+        copyText={codeSnippet}
+        css={{ position: 'absolute', top: theme.spacing.xs, right: theme.spacing.xs }}
+      />
+      <CodeSnippet theme={theme.isDarkMode ? 'duotoneDark' : 'light'} language="python">
+        {codeSnippet}
+      </CodeSnippet>
+    </div>
+  ) : (
+    <div css={{ display: 'flex', justifyContent: 'center', padding: theme.spacing.lg }}>
+      <Spinner />
+    </div>
   );
 
   return (
@@ -58,8 +123,9 @@ export const RunEvaluationButton = ({ experimentId }: { experimentId: string }) 
       </Button>
       <Modal
         componentId="mlflow.eval-runs.start-run-modal"
-        // eslint-disable-next-line formatjs/enforce-description
-        title={<FormattedMessage defaultMessage="Run evaluation" />}
+        title={
+          <FormattedMessage defaultMessage="Run evaluation" description="Title for the run evaluation modal dialog" />
+        }
         visible={isOpen}
         okText="Discard"
         footer={null}

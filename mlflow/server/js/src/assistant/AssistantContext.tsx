@@ -8,7 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { AssistantAgentContextType, AssistantMode, ChatMessage, ToolUseInfo } from './types';
 import { cancelSession as cancelSessionApi, sendMessageStream, getConfig } from './AssistantService';
 import { sendTraceAnalysisStream } from './TraceAnalysisService';
-import { useLocalStorage } from '../shared/web-shared/hooks/useLocalStorage';
+import { useLocalStorage } from '@databricks/web-shared/hooks';
 import { useAssistantPageContextActions } from './AssistantPageContext';
 import { useInvalidateTraceViews } from '../shared/web-shared/model-trace-explorer/hooks/useTraceViews';
 
@@ -85,12 +85,11 @@ export const AssistantProvider = ({ children }: { children: ReactNode }) => {
   // Use ref to track active EventSource for cancellation
   const eventSourceRef = useRef<EventSource | null>(null);
 
-  const appendToStreamingMessage = useCallback((text: string) => {
-    // Add newline separator if there's already content (e.g. reasoning)
-    if (streamingMessageRef.current && !streamingMessageRef.current.endsWith('\n') && !text.startsWith('\n')) {
-      streamingMessageRef.current += '\n\n';
-    }
-    streamingMessageRef.current += text;
+  // Throttle streaming updates to avoid overwhelming React with re-renders
+  const rafPendingRef = useRef<number | null>(null);
+
+  const flushStreamingMessage = useCallback(() => {
+    rafPendingRef.current = null;
     setMessages((prev) => {
       const lastMessage = prev[prev.length - 1];
       if (lastMessage && lastMessage.role === 'assistant' && lastMessage.isStreaming) {
@@ -100,11 +99,26 @@ export const AssistantProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
+  const appendToStreamingMessage = useCallback(
+    (text: string) => {
+      streamingMessageRef.current += text;
+      if (rafPendingRef.current === null) {
+        rafPendingRef.current = requestAnimationFrame(flushStreamingMessage);
+      }
+    },
+    [flushStreamingMessage],
+  );
+
   const finalizeStreamingMessage = useCallback(() => {
+    // Cancel any pending RAF and do a final flush with isStreaming: false
+    if (rafPendingRef.current !== null) {
+      cancelAnimationFrame(rafPendingRef.current);
+      rafPendingRef.current = null;
+    }
     setMessages((prev) => {
       const lastMessage = prev[prev.length - 1];
       if (lastMessage && lastMessage.role === 'assistant' && lastMessage.isStreaming) {
-        const { cleanContent, viewUpdates } = parseTraceViewMarkers(lastMessage.content);
+        const { cleanContent, viewUpdates } = parseTraceViewMarkers(streamingMessageRef.current);
         for (const update of viewUpdates) {
           invalidateTraceViewsRef.current(update.trace_id);
         }
@@ -136,8 +150,7 @@ export const AssistantProvider = ({ children }: { children: ReactNode }) => {
     setIsLoadingConfig(true);
     try {
       const config = await getConfig();
-      // Setup is complete if claude_code provider is selected
-      const isComplete = config.providers?.['claude_code']?.selected === true;
+      const isComplete = Object.values(config.providers ?? {}).some((p) => p.selected === true);
       setSetupComplete(isComplete);
     } catch {
       // On error, assume setup is not complete
@@ -148,7 +161,7 @@ export const AssistantProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const completeSetup = useCallback(() => {
-    // Refresh config after setup completes to update the UI
+    setSetupComplete(true);
     refreshConfig();
   }, [refreshConfig]);
 
@@ -156,6 +169,20 @@ export const AssistantProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     refreshConfig();
   }, [refreshConfig]);
+
+  // Cancel pending RAF and close EventSource on unmount
+  useEffect(() => {
+    return () => {
+      if (rafPendingRef.current !== null) {
+        cancelAnimationFrame(rafPendingRef.current);
+        rafPendingRef.current = null;
+      }
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, []);
 
   const handleStreamError = useCallback((errorMsg: string) => {
     setError(errorMsg);
@@ -407,7 +434,9 @@ export const AssistantProvider = ({ children }: { children: ReactNode }) => {
 
     // Send cancel request to backend
     cancelSessionApi(sessionId).catch((err) => {
-      // fail silently
+      if (err) {
+        // fail silently
+      }
     });
 
     // Mark the current streaming message as interrupted

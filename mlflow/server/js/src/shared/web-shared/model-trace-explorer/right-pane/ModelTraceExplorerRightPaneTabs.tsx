@@ -11,13 +11,12 @@ import { ModelTraceExplorerContentTab } from './ModelTraceExplorerContentTab';
 import { ModelTraceExplorerEventsTab } from './ModelTraceExplorerEventsTab';
 import { ModelTraceExplorerRangeDetailView } from './ModelTraceExplorerRangeDetailView';
 import { SimplifiedAssessmentView } from './SimplifiedAssessmentView';
-import { SpanModelCostBadge } from './SpanModelCostBadge';
 import type { ModelTraceExplorerTab, ModelTraceSpanNode, SearchMatch } from '../ModelTrace.types';
+import { SpanModelCostBadge } from './SpanModelCostBadge';
 import { getSpanExceptionCount, getTraceLevelAssessments } from '../ModelTraceExplorer.utils';
 import { ModelTraceExplorerBadge } from '../ModelTraceExplorerBadge';
 import ModelTraceExplorerResizablePane from '../ModelTraceExplorerResizablePane';
 import { useModelTraceExplorerViewState } from '../ModelTraceExplorerViewStateContext';
-import { AddToDatasetButton } from '../assessments-pane/AddToDatasetButton';
 import { AssessmentPaneToggle } from '../assessments-pane/AssessmentPaneToggle';
 import { AssessmentsPane } from '../assessments-pane/AssessmentsPane';
 import { ASSESSMENT_PANE_MIN_WIDTH } from '../assessments-pane/AssessmentsPane.utils';
@@ -130,21 +129,16 @@ function ModelTraceExplorerRightPaneTabsImpl({
       value={activeTab}
       onValueChange={(tab: string) => setActiveTab(tab as ModelTraceExplorerTab)}
     >
-      <SpanModelCostBadge activeSpan={activeSpan} />
-      {!displayReadOnlyAssessments && (
+      {!displayReadOnlyAssessments && !assessmentsPaneExpanded && (
         <div
           css={{
             position: 'absolute',
-            right: assessmentsPaneExpanded ? theme.spacing.xs : theme.spacing.md,
+            right: theme.spacing.sm,
             top: theme.spacing.xs,
             zIndex: 1,
             backgroundColor: theme.colors.backgroundPrimary,
-            display: 'flex',
-            gap: theme.spacing.sm,
-            alignItems: 'center',
           }}
         >
-          <AddToDatasetButton />
           <AssessmentPaneToggle />
         </div>
       )}
@@ -190,7 +184,7 @@ function ModelTraceExplorerRightPaneTabsImpl({
       </Tabs.List>
       {activeSpan.chatMessages && (
         <Tabs.Content css={contentStyle} value="chat">
-          <ModelTraceExplorerChatTab chatMessages={activeSpan.chatMessages} chatTools={activeSpan.chatTools} />
+          <ModelTraceExplorerChatTab activeSpan={activeSpan} />
         </Tabs.Content>
       )}
       <Tabs.Content css={contentStyle} value="content">

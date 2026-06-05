@@ -4,14 +4,24 @@ Base provider for OpenAI-compatible APIs.
 Many LLM providers (Groq, DeepSeek, xAI, etc.) expose APIs that follow the
 OpenAI chat/completions/embeddings format. This module provides a reusable
 base class so that adding a new such provider requires only a config class,
-a NAME, and a default base URL.
+a DISPLAY_NAME, and a default base URL.
 """
 
 from typing import Any, AsyncIterable
 
-from mlflow.gateway.config import EndpointConfig
-from mlflow.gateway.providers.base import BaseProvider, PassthroughAction, ProviderAdapter
-from mlflow.gateway.providers.utils import send_request, send_stream_request
+from mlflow.gateway.config import EndpointConfig, EndpointType
+from mlflow.gateway.providers.base import (
+    BaseProvider,
+    PassthroughAction,
+    ProviderAdapter,
+    _client_provides_auth,
+)
+from mlflow.gateway.providers.utils import (
+    proxy_root_url,
+    send_proxy_request,
+    send_request,
+    send_stream_request,
+)
 from mlflow.gateway.schemas import chat, embeddings
 from mlflow.gateway.utils import stream_sse_data
 
@@ -171,7 +181,7 @@ class OpenAICompatibleProvider(BaseProvider):
     Base provider for APIs that follow the OpenAI format.
 
     Subclasses must set:
-        - NAME: Provider display name (e.g., "Groq")
+        - DISPLAY_NAME: Provider display name (e.g., "Groq")
         - CONFIG_TYPE: The provider's config class
         - DEFAULT_API_BASE: Default base URL for the API (e.g., "https://api.groq.com/openai/v1")
 
@@ -211,17 +221,35 @@ class OpenAICompatibleProvider(BaseProvider):
     def adapter_class(self) -> type[ProviderAdapter]:
         return OpenAICompatibleAdapter
 
+    def get_endpoint_url(self, route_type: str) -> str:
+        path_map = {
+            EndpointType.LLM_V1_CHAT: "chat/completions",
+            EndpointType.LLM_V1_COMPLETIONS: "completions",
+            EndpointType.LLM_V1_EMBEDDINGS: "embeddings",
+        }
+        if (path := path_map.get(route_type)) is None:
+            raise ValueError(f"Invalid route type {route_type}")
+        return f"{self._api_base}/{path}"
+
     def _get_headers(
         self,
         headers: dict[str, str] | None = None,
     ) -> dict[str, str]:
         result_headers = self.headers.copy()
         if headers:
-            client_headers = {
-                k: v
-                for k, v in headers.items()
-                if k.lower() not in ("host", "content-length", "authorization")
-            }
+            if _client_provides_auth(headers):
+                # Preserve the client's own credentials for subscription-based tools
+                # (e.g. Claude Code, Codex, Gemini CLI) instead of using the server key.
+                result_headers.pop("Authorization", None)
+                client_headers = {
+                    k: v for k, v in headers.items() if k.lower() not in ("host", "content-length")
+                }
+            else:
+                client_headers = {
+                    k: v
+                    for k, v in headers.items()
+                    if k.lower() not in ("host", "content-length", "authorization")
+                }
             result_headers = client_headers | result_headers
         return result_headers
 
@@ -307,6 +335,22 @@ class OpenAICompatibleProvider(BaseProvider):
                 ):
                     return token_usage
         return {}
+
+    async def _proxy(
+        self,
+        path: str,
+        payload: dict[str, Any],
+        headers: dict[str, str] | None = None,
+    ) -> dict[str, Any] | AsyncIterable[Any]:
+        gen = send_proxy_request(
+            self._get_headers(headers), proxy_root_url(self._api_base), path, payload
+        )
+        meta = await gen.__anext__()
+        if meta["is_streaming"]:
+            return gen
+        body = await gen.__anext__()
+        await gen.aclose()
+        return body
 
     async def _passthrough(
         self,

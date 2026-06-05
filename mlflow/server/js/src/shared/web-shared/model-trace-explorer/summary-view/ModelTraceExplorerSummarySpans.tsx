@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   SegmentedControlButton,
@@ -14,35 +14,27 @@ import { ModelTraceExplorerSummaryViewExceptionsSection } from './ModelTraceExpl
 import type { ModelTraceExplorerRenderMode, ModelTraceSpanNode } from '../ModelTrace.types';
 import { createListFromObject, getSpanExceptionEvents } from '../ModelTraceExplorer.utils';
 import { useModelTraceExplorerViewState } from '../ModelTraceExplorerViewStateContext';
-import { getTimelineTreeNodesList } from '../timeline-tree/TimelineTree.utils';
 import { AddToDatasetButton } from '../assessments-pane/AddToDatasetButton';
 import { AssessmentPaneToggle } from '../assessments-pane/AssessmentPaneToggle';
 import { useModelTraceExplorerPreferences } from '../ModelTraceExplorerPreferencesContext';
-import type { TraceView } from '../hooks/useTraceViews';
-import { applyJsonPathToObject } from '../hooks/useTraceViewFiltering';
-import { TraceViewEditToolbar } from '../edit-mode/TraceViewEditToolbar';
-import { useCreateTraceView, useUpdateTraceView } from '../hooks/useTraceViewMutations';
-import { useSpanRangeSelection } from '../edit-mode/useSpanRangeSelection';
 
 export const SUMMARY_SPANS_MIN_WIDTH = 400;
+const INTERMEDIATE_NODES_TRUNCATION_LIMIT = 3;
 
 export const ModelTraceExplorerSummarySpans = ({
   rootNode,
   intermediateNodes,
   hideRenderModeSelector = false,
-  activeTraceView = null,
-  viewMatchedSpanKeys = null,
 }: {
   rootNode: ModelTraceSpanNode;
   intermediateNodes: ModelTraceSpanNode[];
   hideRenderModeSelector?: boolean;
-  activeTraceView?: TraceView | null;
-  viewMatchedSpanKeys?: Set<string | number> | null;
 }) => {
   const { theme } = useDesignSystemTheme();
   const preferences = useModelTraceExplorerPreferences();
   const [renderMode, setRenderModeInternal] = useState<ModelTraceExplorerRenderMode>(preferences.renderMode);
-  const { readOnly, editMode, setActiveTraceView } = useModelTraceExplorerViewState();
+  const [intermediateNodesExpanded, setIntermediateNodesExpanded] = useState(false);
+  const { readOnly, assessmentsPaneExpanded } = useModelTraceExplorerViewState();
 
   useEffect(() => {
     setRenderModeInternal(preferences.renderMode);
@@ -56,34 +48,6 @@ export const ModelTraceExplorerSummarySpans = ({
     [preferences],
   );
 
-  const traceId = rootNode.traceId;
-  const createMutation = useCreateTraceView(traceId);
-  const updateMutation = useUpdateTraceView(traceId);
-
-  const flattenedNodes = useMemo(() => getTimelineTreeNodesList(intermediateNodes), [intermediateNodes]);
-
-  const draftRanges = editMode.draftView?.ranges ?? [];
-  const selection = useSpanRangeSelection(
-    flattenedNodes,
-    draftRanges,
-    editMode.addRange,
-    editMode.removeRange,
-    editMode.updateRange,
-  );
-
-  const handleSave = useCallback(async () => {
-    if (!editMode.draftView) return;
-    const { view_id, name, ranges } = editMode.draftView;
-    let savedView: TraceView;
-    if (view_id) {
-      savedView = await updateMutation.mutateAsync({ viewId: view_id, name, ranges });
-    } else {
-      savedView = await createMutation.mutateAsync({ name, ranges });
-    }
-    setActiveTraceView(savedView);
-    editMode.exitEditMode();
-  }, [editMode, createMutation, updateMutation, setActiveTraceView]);
-
   const rootInputs = rootNode.inputs;
   const rootOutputs = rootNode.outputs;
   const chatMessageFormat = rootNode.chatMessageFormat;
@@ -91,26 +55,12 @@ export const ModelTraceExplorerSummarySpans = ({
   const hasIntermediateNodes = intermediateNodes.length > 0;
   const hasExceptions = exceptions.length > 0;
 
-  const firstRange = activeTraceView?.ranges?.[0];
-  const filteredInputs = useMemo(
-    () => applyJsonPathToObject(rootInputs, firstRange?.input_path),
-    [rootInputs, firstRange?.input_path],
-  );
-  const filteredOutputs = useMemo(
-    () => applyJsonPathToObject(rootOutputs, firstRange?.output_path),
-    [rootOutputs, firstRange?.output_path],
-  );
-
-  const inputList = useMemo(
-    () => createListFromObject(filteredInputs as any).filter(({ value }) => value !== 'null'),
-    [filteredInputs],
-  );
-  const outputList = useMemo(
-    () => createListFromObject(filteredOutputs as any).filter(({ value }) => value !== 'null'),
-    [filteredOutputs],
-  );
-
-  const hasJsonPathFilter = !!(firstRange?.input_path || firstRange?.output_path);
+  const inputList = createListFromObject(rootInputs).filter(({ value }) => value !== 'null');
+  const outputList = createListFromObject(rootOutputs).filter(({ value }) => value !== 'null');
+  const shouldTruncateNodes = intermediateNodes.length > INTERMEDIATE_NODES_TRUNCATION_LIMIT;
+  const displayedIntermediateNodes = intermediateNodesExpanded
+    ? intermediateNodes
+    : intermediateNodes.slice(0, INTERMEDIATE_NODES_TRUNCATION_LIMIT);
 
   return (
     <div
@@ -119,17 +69,13 @@ export const ModelTraceExplorerSummarySpans = ({
         flexDirection: 'column',
         flex: 1,
         minHeight: 0,
-        padding: theme.spacing.md,
-        paddingTop: theme.spacing.sm,
         overflow: 'auto',
         minWidth: SUMMARY_SPANS_MIN_WIDTH,
       }}
     >
       {!hideRenderModeSelector && (
-        <div
-          css={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', marginBottom: theme.spacing.sm }}
-        >
-          <div css={{ display: 'flex', gap: theme.spacing.sm }}>
+        <div css={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', marginBlock: theme.spacing.sm }}>
+          <div css={{ display: 'flex', gap: theme.spacing.sm, paddingInline: theme.spacing.sm }}>
             <SegmentedControlGroup
               name="render-mode"
               componentId="shared.model-trace-explorer.summary-view.render-mode"
@@ -149,41 +95,20 @@ export const ModelTraceExplorerSummarySpans = ({
                   description="Label for the JSON render mode selector in the model trace explorer summary view"
                 />
               </SegmentedControlButton>
+              <SegmentedControlButton value="table">
+                <FormattedMessage
+                  defaultMessage="Table"
+                  description="Label for the Table render mode selector in the model trace explorer summary view"
+                />
+              </SegmentedControlButton>
             </SegmentedControlGroup>
             {!readOnly && (
               <>
                 <AddToDatasetButton />
-                <AssessmentPaneToggle />
+                {!assessmentsPaneExpanded && <AssessmentPaneToggle />}
               </>
             )}
           </div>
-        </div>
-      )}
-      {editMode.isEditMode && editMode.draftView && (
-        <TraceViewEditToolbar
-          name={editMode.draftView.name}
-          onNameChange={editMode.setName}
-          ranges={editMode.draftView.ranges}
-          onCancel={editMode.exitEditMode}
-          onSave={handleSave}
-          isSaving={createMutation.isLoading || updateMutation.isLoading}
-        />
-      )}
-      {!editMode.isEditMode && hasJsonPathFilter && activeTraceView && (
-        <div
-          css={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: theme.spacing.xs,
-            marginBottom: theme.spacing.sm,
-            padding: `${theme.spacing.xs}px ${theme.spacing.sm}px`,
-            backgroundColor: theme.colors.backgroundSecondary,
-            borderRadius: theme.borders.borderRadiusMd,
-          }}
-        >
-          <Typography.Text size="sm" color="secondary">
-            Filtered by: {activeTraceView.name}
-          </Typography.Text>
         </div>
       )}
       {hasExceptions && <ModelTraceExplorerSummaryViewExceptionsSection node={rootNode} />}
@@ -200,38 +125,46 @@ export const ModelTraceExplorerSummarySpans = ({
         renderMode={renderMode}
         chatMessageFormat={chatMessageFormat}
       />
-      {hasIntermediateNodes && (
-        <div
-          onPointerUp={editMode.isEditMode ? selection.handlePointerUp : undefined}
-          onPointerLeave={editMode.isEditMode ? selection.handlePointerUp : undefined}
-          css={{ userSelect: editMode.isEditMode ? 'none' : undefined }}
-        >
-          {intermediateNodes.map((node) => {
-            const flatIndex = selection.spanKeyToFlatIndex.get(String(node.key));
-            const editState =
-              editMode.isEditMode && editMode.draftView && flatIndex !== undefined
-                ? selection.getNodeEditState(flatIndex)
-                : null;
-            return (
-              <ModelTraceExplorerSummaryIntermediateNode
-                key={node.key}
-                node={node}
-                renderMode={renderMode}
-                activeTraceView={activeTraceView}
-                isDimmedByView={
-                  editState ? editState.isDimmed : viewMatchedSpanKeys != null && !viewMatchedSpanKeys.has(node.key)
-                }
-                isMatchedByView={
-                  editState ? editState.inRange : viewMatchedSpanKeys != null && viewMatchedSpanKeys.has(node.key)
-                }
-                editState={editMode.isEditMode && editMode.draftView ? editState : undefined}
-                editSelection={editMode.isEditMode && editMode.draftView ? selection : undefined}
-                editRanges={editMode.isEditMode && editMode.draftView ? editMode.draftView.ranges : undefined}
-                onRemoveRange={editMode.isEditMode ? editMode.removeRange : undefined}
-                onUpdateRange={editMode.isEditMode ? editMode.updateRange : undefined}
+      {displayedIntermediateNodes.map((node, index) => (
+        <ModelTraceExplorerSummaryIntermediateNode
+          key={node.key}
+          node={node}
+          renderMode={renderMode}
+          css={{
+            borderTop: index === 0 ? `1px solid ${theme.colors.border}` : undefined,
+            borderBottom:
+              !shouldTruncateNodes && index === displayedIntermediateNodes.length - 1
+                ? undefined
+                : `1px solid ${theme.colors.border}`,
+          }}
+        />
+      ))}
+      {shouldTruncateNodes && (
+        <div css={{ paddingBlock: theme.spacing.sm, display: 'flex', justifyContent: 'center' }}>
+          {intermediateNodesExpanded ? (
+            <Typography.Link
+              componentId="shared.model-trace-explorer.summary-view.collapse-intermediate-nodes"
+              onClick={() => setIntermediateNodesExpanded(false)}
+            >
+              <FormattedMessage
+                defaultMessage="Show less"
+                description="Link that collapses an expanded list when clicked"
               />
-            );
-          })}
+            </Typography.Link>
+          ) : (
+            <Typography.Link
+              componentId="shared.model-trace-explorer.summary-view.expand-intermediate-nodes"
+              onClick={() => setIntermediateNodesExpanded(true)}
+            >
+              <FormattedMessage
+                defaultMessage="Show {count} more intermediate {count, plural, =1 {step} other {steps}}"
+                description="Link that expands a collapsed list of intermediate function execution steps when clicked"
+                values={{
+                  count: intermediateNodes.length - INTERMEDIATE_NODES_TRUNCATION_LIMIT,
+                }}
+              />
+            </Typography.Link>
+          )}
         </div>
       )}
       <ModelTraceExplorerSummarySection
