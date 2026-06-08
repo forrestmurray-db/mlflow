@@ -1,8 +1,9 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { A2UIViewer, litTheme } from '@a2ui/react';
-import { Typography, useDesignSystemTheme } from '@databricks/design-system';
+import { Button, Spinner, Typography, useDesignSystemTheme } from '@databricks/design-system';
 
+import { useMutation } from '../../query-client/queryClient';
 import type { CreateAssessmentPayload } from '../api';
 import type { FeedbackAssessment } from '../ModelTrace.types';
 import { useCreateAssessment } from '../hooks/useCreateAssessment';
@@ -11,6 +12,8 @@ import { buildSampleSpec } from './buildSampleSpec';
 import { registerMlflowCatalog } from './catalog/registerMlflowCatalog';
 import { FeedbackActionProvider } from './FeedbackActionContext';
 import type { SubmitFeedbackArgs } from './FeedbackActionContext';
+import { fetchTraceViewSpec } from './fetchViewSpec';
+import type { ViewSpec } from './fetchViewSpec';
 import { TraceDataProvider } from './TraceDataContext';
 
 // Register the catalog with the singleton on module load so A2UIViewer sees it
@@ -45,7 +48,15 @@ export const TraceViewA2UIPrototype = () => {
     [createAssessmentMutation, traceId],
   );
 
-  const sampleSpec = useMemo(() => buildSampleSpec(), []);
+  const [generatedSpec, setGeneratedSpec] = useState<ViewSpec | null>(null);
+
+  const { mutate: generate, isLoading: isGenerating } = useMutation({
+    mutationFn: () => fetchTraceViewSpec({ traceId }),
+    onSuccess: (spec: ViewSpec) => setGeneratedSpec(spec),
+  });
+
+  const fallbackSpec = useMemo(() => buildSampleSpec(), []);
+  const activeSpec = generatedSpec ?? fallbackSpec;
 
   if (!rootNode) {
     return (
@@ -63,11 +74,29 @@ export const TraceViewA2UIPrototype = () => {
             padding: theme.spacing.lg,
             overflow: 'auto',
             height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: theme.spacing.md,
           }}
         >
+          <div css={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+            <Button
+              componentId="a2ui-prototype.generate-view"
+              type="primary"
+              loading={isGenerating}
+              disabled={!traceId || isGenerating}
+              onClick={() => generate()}
+            >
+              {generatedSpec ? 'Regenerate view' : 'Generate view'}
+            </Button>
+            {isGenerating && <Spinner size="small" />}
+            <Typography.Text color="secondary" size="sm">
+              {generatedSpec ? generatedSpec.name : 'Showing sample template'}
+            </Typography.Text>
+          </div>
           <A2UIViewer
-            root={sampleSpec.root}
-            components={sampleSpec.components}
+            root={activeSpec.root}
+            components={activeSpec.components}
             data={{}}
             theme={litTheme}
             onAction={(action) => {
