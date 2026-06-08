@@ -10,11 +10,5 @@ export interface ViewSpec {
 
 const VIEW_SPEC_URL = 'ajax-api/3.0/mlflow/assistant/trace-analysis/view-spec';
 
-export const fetchTraceViewSpec = ({
-  traceId,
-  model,
-}: {
-  traceId: string;
-  model?: string;
-}): Promise<ViewSpec> =>
+export const fetchTraceViewSpec = ({ traceId, model }: { traceId: string; model?: string }): Promise<ViewSpec> =>
   fetchAPI(getAjaxUrl(VIEW_SPEC_URL), 'POST', { trace_id: traceId, model });

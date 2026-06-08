@@ -260,7 +260,6 @@ def create_view_from_summary(
 ):
     from mlflow.genai.judges.adapters.litellm_adapter import _invoke_litellm_and_handle_tools
     from mlflow.metrics.genai.model_utils import _parse_model_uri
-    from mlflow.tracking import MlflowClient
     from mlflow.types.llm import ChatMessage
 
     trace = MlflowClient().get_trace(trace_id)
@@ -319,7 +318,6 @@ def create_conversational_agent(trace_id: str, model: str = "openai:/gpt-4o"):
     """
     from mlflow.genai.judges.adapters.litellm_adapter import _invoke_litellm_and_handle_tools
     from mlflow.metrics.genai.model_utils import _parse_model_uri
-    from mlflow.tracking import MlflowClient
     from mlflow.types.llm import ChatMessage
 
     trace = MlflowClient().get_trace(trace_id)

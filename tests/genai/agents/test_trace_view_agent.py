@@ -1,5 +1,8 @@
+from unittest import mock
+
 import pytest
 
+from mlflow.entities.trace_summary import Milestone, TraceSummary
 from mlflow.genai.agents.trace_view_agent import (
     _ElementIntent,
     _ViewIntent,
@@ -106,11 +109,6 @@ def test_expand_omits_optional_fields_when_absent():
     fb = _component_by_id(doc, "feedback-1")
     assert detail["component"]["GenAISpanDetail"] == {"selector": {"span_type": "LLM"}}
     assert fb["component"]["FeedbackThumbs"] == {"name": "q", "target": "trace"}
-
-
-from unittest import mock
-
-from mlflow.entities.trace_summary import Milestone, TraceSummary
 
 
 def test_generate_view_spec_summarizes_then_compiles_intent():
