@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Literal
 
 import pydantic
 
@@ -67,6 +68,39 @@ class _TraceSummarySchema(pydantic.BaseModel):
     summary: str = pydantic.Field(description="Executive summary of the agent trajectory (2-4 sentences)")
     milestones: list[_MilestoneSchema] = pydantic.Field(
         description="Key phases/steps identified in the trace, in chronological order"
+    )
+
+
+class _ElementIntent(pydantic.BaseModel):
+    kind: Literal["text", "span_detail", "feedback_thumbs"] = pydantic.Field(
+        description="Which catalog component this element renders as"
+    )
+    text: str | None = pydantic.Field(
+        default=None, description="Header/prose text. Required when kind='text'."
+    )
+    span_type: str | None = pydantic.Field(
+        default=None,
+        description=(
+            "OTel-GenAI span type shorthand to bind to, e.g. 'LLM', 'TOOL', "
+            "'RETRIEVER', 'AGENT'. Required when kind='span_detail'."
+        ),
+    )
+    title: str | None = pydantic.Field(
+        default=None, description="Card title for kind='span_detail'."
+    )
+    feedback_name: str | None = pydantic.Field(
+        default=None,
+        description="Feedback assessment name to record. Required when kind='feedback_thumbs'.",
+    )
+    label: str | None = pydantic.Field(
+        default=None, description="Human-facing label for kind='feedback_thumbs'."
+    )
+
+
+class _ViewIntent(pydantic.BaseModel):
+    name: str = pydantic.Field(description="Short descriptive name for this trace view")
+    elements: list[_ElementIntent] = pydantic.Field(
+        description="Ordered, flat list of view elements rendered top to bottom"
     )
 
 
