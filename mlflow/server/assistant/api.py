@@ -201,6 +201,32 @@ async def trace_analysis_message(request: TraceAnalysisMessageRequest) -> Stream
     )
 
 
+class ViewSpecRequest(BaseModel):
+    trace_id: str
+    model: str = "openai:/gpt-4o"
+
+
+class ViewSpecResponse(BaseModel):
+    name: str
+    root: str
+    components: list[dict[str, Any]]
+
+
+@assistant_router.post("/trace-analysis/view-spec")
+async def trace_analysis_view_spec(request: ViewSpecRequest) -> ViewSpecResponse:
+    from mlflow.genai.agents.trace_view_agent import generate_view_spec
+
+    loop = asyncio.get_event_loop()
+    try:
+        doc = await loop.run_in_executor(
+            None, lambda: generate_view_spec(request.trace_id, request.model)
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return ViewSpecResponse(**doc)
+
+
 @assistant_router.get("/sessions/{session_id}/stream")
 async def stream_response(request: Request, session_id: str) -> StreamingResponse:
     """

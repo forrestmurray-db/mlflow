@@ -552,3 +552,49 @@ def test_list_provider_models_returns_404_for_unsupported_provider(client):
 
     assert response.status_code == 404
     assert "not supported" in response.json()["detail"]
+
+
+def test_view_spec_returns_generated_document(client):
+    fake_doc = {
+        "name": "Generated view",
+        "root": "col-root",
+        "components": [
+            {"id": "col-root", "component": {"Column": {"children": {"explicitList": ["text-0"]}}}},
+            {"id": "text-0", "component": {"Text": {"text": {"literal": "Hi"}, "usageHint": "h3"}}},
+        ],
+    }
+    with patch(
+        "mlflow.genai.agents.trace_view_agent.generate_view_spec",
+        return_value=fake_doc,
+    ) as mock_generate:
+        response = client.post(
+            "/ajax-api/3.0/mlflow/assistant/trace-analysis/view-spec",
+            json={"trace_id": "tr-123"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == fake_doc
+    mock_generate.assert_called_once_with("tr-123", "openai:/gpt-4o")
+
+
+def test_view_spec_requires_trace_id(client):
+    response = client.post(
+        "/ajax-api/3.0/mlflow/assistant/trace-analysis/view-spec",
+        json={},
+    )
+    assert response.status_code == 422
+
+
+def test_view_spec_returns_500_on_generation_error(client):
+    with patch(
+        "mlflow.genai.agents.trace_view_agent.generate_view_spec",
+        side_effect=RuntimeError("boom"),
+    ) as mock_generate:
+        response = client.post(
+            "/ajax-api/3.0/mlflow/assistant/trace-analysis/view-spec",
+            json={"trace_id": "tr-123"},
+        )
+
+    assert response.status_code == 500
+    assert "boom" in response.json()["detail"]
+    mock_generate.assert_called_once()
