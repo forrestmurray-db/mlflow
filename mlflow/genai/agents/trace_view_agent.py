@@ -8,6 +8,7 @@ from typing import Literal
 import pydantic
 
 from mlflow.entities.trace_summary import Milestone, TraceSummary
+from mlflow.tracking import MlflowClient
 
 _logger = logging.getLogger(__name__)
 
@@ -56,6 +57,28 @@ execution and create a SpanRange with:
 
 Use list_spans and get_span to explore the trace structure and find the right
 spans for each milestone. Then call create_trace_view with the ranges.
+"""
+
+_GENERATE_VIEW_SPEC_SYSTEM_PROMPT = """\
+You are an expert at composing MLflow trace views from a small UI catalog.
+
+You have a TraceSummary describing this trace's key milestones. Design a concise,
+review-focused view as an ordered, flat list of elements. Each element has a
+'kind':
+
+- text: a header or short prose line (set 'text').
+- span_detail: shows one bound span's input/output. Set 'span_type' to the
+  OTel-GenAI span type to bind to ('LLM', 'TOOL', 'RETRIEVER', 'AGENT', ...) and
+  an optional 'title'.
+- feedback_thumbs: a thumbs up/down feedback widget at the trace level. Set
+  'feedback_name' (the assessment name) and an optional 'label'.
+
+Lead with a short text header, surface the spans that matter for the milestones,
+and end with at least one feedback_thumbs so reviewers can label the trace.
+Do not invent element ids or layout containers — only emit the flat element list.
+
+TraceSummary:
+{summary_json}
 """
 
 
@@ -146,6 +169,43 @@ def expand_to_a2ui(intent: _ViewIntent) -> dict:
         "component": {"Column": {"children": {"explicitList": children}}},
     }
     return {"root": _ROOT_ID, "components": [root, *components]}
+
+
+def generate_view_spec(trace_id: str, model: str = "openai:/gpt-4o") -> dict:
+    """Generate an a2ui trace-view document for a trace.
+
+    Reuses summarize_trace() for milestones, makes one structured-output call to
+    produce a flat _ViewIntent, then compiles it with expand_to_a2ui(). Returns
+    {"name", "root", "components"}. See ADR 0001.
+    """
+    from mlflow.genai.judges.utils.invocation_utils import (
+        get_chat_completions_with_structured_output,
+    )
+    from mlflow.types.llm import ChatMessage
+
+    trace = MlflowClient().get_trace(trace_id)
+    summary = summarize_trace(trace, model)
+
+    summary_json = json.dumps(summary.to_dict(), indent=2)
+    system_msg = _GENERATE_VIEW_SPEC_SYSTEM_PROMPT.format(summary_json=summary_json)
+
+    messages = [
+        ChatMessage(role="system", content=system_msg),
+        ChatMessage(
+            role="user",
+            content="Design the trace view as a flat list of catalog elements.",
+        ),
+    ]
+
+    intent = get_chat_completions_with_structured_output(
+        model_uri=model,
+        messages=messages,
+        output_schema=_ViewIntent,
+        trace=trace,
+        skills=_get_skills(),
+    )
+
+    return {"name": intent.name, **expand_to_a2ui(intent)}
 
 
 def _get_skills():

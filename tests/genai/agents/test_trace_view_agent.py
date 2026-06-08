@@ -1,6 +1,11 @@
 import pytest
 
-from mlflow.genai.agents.trace_view_agent import _ElementIntent, _ViewIntent
+from mlflow.genai.agents.trace_view_agent import (
+    _ElementIntent,
+    _ViewIntent,
+    expand_to_a2ui,
+    generate_view_spec,
+)
 
 
 def test_view_intent_parses_flat_elements():
@@ -21,9 +26,6 @@ def test_view_intent_parses_flat_elements():
 def test_element_intent_rejects_unknown_kind():
     with pytest.raises(ValueError):
         _ElementIntent(kind="table")
-
-
-from mlflow.genai.agents.trace_view_agent import expand_to_a2ui
 
 
 def _component_by_id(doc, element_id):
@@ -104,3 +106,47 @@ def test_expand_omits_optional_fields_when_absent():
     fb = _component_by_id(doc, "feedback-1")
     assert detail["component"]["GenAISpanDetail"] == {"selector": {"span_type": "LLM"}}
     assert fb["component"]["FeedbackThumbs"] == {"name": "q", "target": "trace"}
+
+
+from unittest import mock
+
+from mlflow.entities.trace_summary import Milestone, TraceSummary
+
+
+def test_generate_view_spec_summarizes_then_compiles_intent():
+    fake_trace = mock.MagicMock()
+    fake_summary = TraceSummary(
+        trace_id="tr-1",
+        summary="An agent answered a question.",
+        milestones=[Milestone(label="Planning", description="planned")],
+        model="openai:/gpt-4o",
+    )
+    fake_intent = _ViewIntent(
+        name="Generated view",
+        elements=[{"kind": "text", "text": "Overview"}],
+    )
+
+    with (
+        mock.patch(
+            "mlflow.genai.agents.trace_view_agent.MlflowClient"
+        ) as mock_client_cls,
+        mock.patch(
+            "mlflow.genai.agents.trace_view_agent.summarize_trace",
+            return_value=fake_summary,
+        ) as mock_summarize,
+        mock.patch(
+            "mlflow.genai.judges.utils.invocation_utils.get_chat_completions_with_structured_output",
+            return_value=fake_intent,
+        ) as mock_structured,
+    ):
+        mock_client_cls.return_value.get_trace.return_value = fake_trace
+        doc = generate_view_spec("tr-1", model="openai:/gpt-4o")
+
+    mock_client_cls.return_value.get_trace.assert_called_once_with("tr-1")
+    mock_summarize.assert_called_once_with(fake_trace, "openai:/gpt-4o")
+    mock_structured.assert_called_once()
+    # output schema passed to the structured call is the view intent
+    assert mock_structured.call_args.kwargs["output_schema"] is _ViewIntent
+    assert doc["name"] == "Generated view"
+    assert doc["root"] == "col-root"
+    assert any("Text" in c["component"] for c in doc["components"])
