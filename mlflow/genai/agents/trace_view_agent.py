@@ -104,6 +104,50 @@ class _ViewIntent(pydantic.BaseModel):
     )
 
 
+_ROOT_ID = "col-root"
+_ID_PREFIX = {"text": "text", "span_detail": "detail", "feedback_thumbs": "feedback"}
+
+
+def _compile_element(element: _ElementIntent, element_id: str) -> dict:
+    match element.kind:
+        case "text":
+            return {
+                "id": element_id,
+                "component": {"Text": {"text": {"literal": element.text}, "usageHint": "h3"}},
+            }
+        case "span_detail":
+            props = {"selector": {"span_type": element.span_type}}
+            if element.title is not None:
+                props["title"] = element.title
+            return {"id": element_id, "component": {"GenAISpanDetail": props}}
+        case "feedback_thumbs":
+            props = {"name": element.feedback_name, "target": "trace"}
+            if element.label is not None:
+                props["label"] = element.label
+            return {"id": element_id, "component": {"FeedbackThumbs": props}}
+
+
+def expand_to_a2ui(intent: _ViewIntent) -> dict:
+    """Compile a flat view intent into an a2ui document ({root, components}).
+
+    Pure function: mints deterministic element ids, builds the root Column whose
+    explicitList references each child in order, and desugars the flat element
+    fields into catalog component props. See ADR 0001.
+    """
+    children = []
+    components = []
+    for index, element in enumerate(intent.elements):
+        element_id = f"{_ID_PREFIX[element.kind]}-{index}"
+        children.append(element_id)
+        components.append(_compile_element(element, element_id))
+
+    root = {
+        "id": _ROOT_ID,
+        "component": {"Column": {"children": {"explicitList": children}}},
+    }
+    return {"root": _ROOT_ID, "components": [root, *components]}
+
+
 def _get_skills():
     from mlflow.genai.skills.parsing import SkillSet
 
